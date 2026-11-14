@@ -1,4 +1,6 @@
 import asyncio
+import json
+from html import escape
 from html.parser import HTMLParser
 
 import httpx
@@ -20,6 +22,16 @@ class Text(HTMLParser):
         self.parts.append(data)
 
 
+def summary_figures(html):
+    summary = html.split('<dl class="summary">', 1)[1].split('</dl>', 1)[0]
+    figures = {}
+    for item in summary.split('<dt>')[1:]:
+        label, value = item.split('</dt>', 1)
+        value = value.split('<dd', 1)[1].split('>', 1)[1].split('</dd>', 1)[0]
+        figures[label] = " ".join(" ".join(Text(value).parts).split())
+    return figures
+
+
 def test_page_is_self_contained_and_uses_plain_words(demo):
     html = render_report(build_report(demo, RUN))
     text = " ".join(Text(html).parts).lower()
@@ -36,6 +48,10 @@ def test_page_is_self_contained_and_uses_plain_words(demo):
     assert "closed" in text
     assert 'href="#action-' in html  # undo links resolve inside the standalone page.
     assert '</h1><p>Rebuilt from the stored records only. Nothing on this page comes from the running program\'s memory.</p>' in html
+    assert summary_figures(html) == {
+        "Actions allowed": "4", "Actions refused": "1", "Actions unknown": "0",
+        "Receipt": "CLOSED", "Checks passed": "7 / 7",
+    }
 
 
 def test_page_escapes_record_content(demo):
@@ -58,6 +74,12 @@ def test_baseline_has_no_permission_checks(demo):
     assert "no check before actions" in html.lower()
     assert "No permissions were recorded" in html
     assert "unchecked" in html
+    assert "4 unchecked" in html
+    assert "No permission checks apply" in html
+    assert summary_figures(html) == {
+        "Actions allowed": "0 4 unchecked", "Actions refused": "0", "Actions unknown": "0",
+        "Receipt": "—", "Checks passed": "0 / 7",
+    }
 
 
 def test_routes_return_html_json_and_404(demo):
@@ -91,10 +113,46 @@ def test_fenced_action_outcome_keeps_its_target_evidence(demo, state, fenced, ex
     }})
     html = render_report(build_report(demo, RUN))
     table = html.split("<tbody>", 1)[1].split("</tbody>", 1)[0]
-    row = next(row for row in table.split("</tr>") if 'class="action-id">· shift-25</span>' in row)
-    assert f'<span class="outcome ">{expected}</span>' in row
+    row = next(row for row in table.split("</tr>") if 'class="action-id">· <code title="shift-25"' in row)
+    assert expected in Text(row).parts
     assert f'&quot;fenced&quot;: {str(fenced).lower()}' in row
     if state == "rejected" and fenced:
         assert "fence confirmed" in row
     else:
         assert "stopped before it reached the target" not in row
+
+
+def test_summary_keeps_unknown_receipts_and_failed_checks_visible(demo):
+    demo.effects.update_one({"_id": "shift-25"}, {"$set": {"state": "sent", "evidence": None}})
+    result = build_report(demo, RUN)
+    html = render_report(result)
+    figures = summary_figures(html)
+    assert figures["Actions unknown"] == "1"
+    assert figures["Receipt"] == "CLOSED"
+    assert figures["Checks passed"] == "6 / 7"
+    assert "1 checks failed" in html
+    assert "still unknown or unfinished" in html
+
+    demo.receipts.update_one({"_id": "receipt-1"}, {"$set": {"status": "open", "closed_at": None}})
+    figures = summary_figures(render_report(build_report(demo, RUN)))
+    assert figures["Actions unknown"] == "1"
+    assert figures["Receipt"] == "OPEN"
+    assert figures["Checks passed"] == "7 / 7"
+
+
+def test_shortened_identifiers_keep_escaped_full_values_and_details(demo):
+    result = build_report(demo, RUN)
+    action_id = 'run-1234567890-abcdefghijklmnopqrstuvwxyz-"<unsafe>'
+    permission_id = "permission-1234567890-abcdefghijklmnopqrstuvwxyz"
+    result["actions"][0]["action_id"] = action_id
+    result["actions"][0]["chain"][0]["permission_id"] = permission_id
+    html = render_report(result)
+    table = html.split('<tbody>', 1)[1].split('</tbody>', 1)[0]
+    assert f'title="{escape(action_id, quote=True)}"' in table
+    assert f'title="{permission_id}"' in table
+    assert '…' in table
+    assert '<unsafe>' not in html
+    details = html.split('<details class="records">', 1)[1].split('<pre>', 1)[1].split('</pre>', 1)[0]
+    saved = json.loads(''.join(Text(details).parts))
+    assert saved["actions"][0]["action_id"] == action_id
+    assert saved["actions"][0]["chain"][0]["permission_id"] == permission_id
