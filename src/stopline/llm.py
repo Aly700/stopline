@@ -289,7 +289,8 @@ class ModelPlanner:
                 if match and "generateContent" in model.get("supportedGenerationMethods", []):
                     version = (int(match[2]), int(match[3] or 0))
                     if version >= (2, 5):
-                        choices.append((version, not bool(match[4]), match[1]))
+                        # Prefer the lite model of the newest version: a live run needs an answer in about a second.
+                        choices.append((bool(match[4]), version, match[1]))
             token = page.get("nextPageToken")
             if not token:
                 break
