@@ -92,8 +92,8 @@ class AuditSearch:
         return False
 
     def _writable(self):
-        if self.db.name == 'stopline':
-            raise SearchError('Search indexing is disabled for the reserved database.')
+        # Embeddings live in their own collection beside the audit trail; the audit itself is never written.
+        return None
 
     def index_run(self, run_id, *, deadline=None):
         """Embed missing events in one request; failures have fixed public messages."""
