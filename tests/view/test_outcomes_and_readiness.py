@@ -63,7 +63,7 @@ def test_released_or_mismatched_hold_does_not_claim_ready_for_k():
     assert read_state(db)['ready_key'] is None
 
 
-def test_leads_folded_refusal_and_receipt_word_are_preserved():
+def test_refused_claim_is_folded_and_receipt_says_refused():
     db, stage = rig()
     stage.cut_and_kill()
     stage.press_stop()

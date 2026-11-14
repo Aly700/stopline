@@ -66,9 +66,9 @@ def database(name: str = DB_NAME) -> Database:
     return client()[name]
 
 
-def test_database(lane: str) -> Database:
+def test_database(suite: str) -> Database:
     """A fresh database for one test session. Drop it with drop_test_database."""
-    return client()[f"{TEST_PREFIX}{lane}_{secrets.token_hex(4)}"]
+    return client()[f"{TEST_PREFIX}{suite}_{secrets.token_hex(4)}"]
 
 
 def drop_test_database(db: Database) -> None:

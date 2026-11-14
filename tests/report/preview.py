@@ -12,7 +12,7 @@ from .records import RUN, insert_demo
 
 
 def main():
-    directory = Path(__file__).resolve().parents[2] / ".lane"
+    directory = Path(__file__).resolve().parents[2] / ".preview"
     directory.mkdir(exist_ok=True)
     db = storage.test_database("report")
     try:
@@ -24,7 +24,7 @@ def main():
             db[name].delete_many({})
         db.effects.update_many({}, {"$set": {"mode": "flag", "root_id": None, "mandate_id": None, "chain": [], "admitted_seq": None, "policy_version": None, "policy_hash": None}})
         (directory / "baseline.html").write_text(render_report(build_report(db, RUN)), encoding="utf-8")
-        print("Wrote .lane/demo.html and .lane/baseline.html; temporary database dropped on exit.")
+        print("Wrote .preview/demo.html and .preview/baseline.html; temporary database dropped on exit.")
     finally:
         storage.drop_test_database(db)
 

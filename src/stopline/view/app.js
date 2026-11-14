@@ -71,9 +71,23 @@ function stopLine(stop) {
 }
 function render(state) {
   current = state;
+  const pressed = state.last_key;
+  if (pressed && pressed.n !== seenKey) {
+    // A key pressed anywhere (this page, another page, a script) shows on every open page.
+    const first = seenKey === undefined;
+    seenKey = pressed.n;
+    if (!first) {
+      if (!busy) { latestKey = pressed.key; status(pressed.message, pressed.pending); }
+      if (pressed.key === 'M' && pressed.lines?.length) {
+        $('numbers-lines').replaceChildren(...pressed.lines.map(line => make('p', line)));
+        $('numbers-note').hidden = false;
+        if (!$('numbers-dialog').open) $('numbers-dialog').showModal();
+      } else if (pressed.key !== 'M' && $('numbers-dialog').open) $('numbers-dialog').close();
+    }
+  } else if (!pressed && seenKey === undefined) seenKey = 0;
   const run = state.run;
-  $('mode').textContent = ({flag:'STOP FLAG', stopline:'STOPLINE', fixed:'FIXED RULES'})[run?.mode] || 'READY';
-  $('run-label').textContent = ({flag:'Workers check a stop flag before each step', fixed:'Rules read once when the run starts', stopline:'Permission checked before every action'})[run?.mode] || 'Press 1 to begin';
+  $('mode').textContent = ({flag:'RUN 1 · STOP FLAG', stopline:'RUN 2 · STOPLINE', fixed:'FIXED RULES'})[run?.mode] || 'READY';
+  $('run-label').textContent = ({flag:'Workers check a stop flag before each step', fixed:'Rules read once when the run starts', stopline:'Every action checked in MongoDB Atlas, in one transaction'})[run?.mode] || 'Press 1 to begin';
   $('context').textContent = `${run?.cluster === 'mock' ? 'Mock cluster · ' : ''}timing controlled · router built for this test`;
   const repair = state.permissions.find(permission => permission.holder === 'agent:repair');
   const workers = state.permissions.filter(permission => ['agent:worker-1', 'agent:worker-2'].includes(permission.holder));
@@ -191,6 +205,7 @@ async function pollTargets() {
     targetSignature = '';
   } finally { targetLoading = false; }
 }
+let seenKey;
 function status(message, isPending = false) { $('key-status').textContent = `${latestKey ? latestKey + ' · ' : ''}${message}`; $('key-status').classList.toggle('pending', isPending); }
 function showValidation(result) {
   const detail = result.detail || {};
@@ -317,7 +332,7 @@ document.addEventListener('keydown', event => {
   }
   if (event.repeat || event.ctrlKey || event.metaKey || event.altKey || /INPUT|TEXTAREA|SELECT/.test(event.target.tagName)) return;
   const key = event.key.toUpperCase();
-  if (!'12SKWRUVMP/Q'.includes(key) || key.length !== 1 || $('chain-dialog').open) return;
+  if (!'12SKWRUVMPX/Q'.includes(key) || key.length !== 1 || $('chain-dialog').open) return;
   if ($('numbers-dialog').open && key !== 'M') $('numbers-dialog').close();
   event.preventDefault(); keypress(key);
 });

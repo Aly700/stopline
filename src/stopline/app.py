@@ -75,6 +75,8 @@ class ResettingStage:
             raise
 
 
+DEFAULT_MODEL = "gemini-3.5-flash-lite"   # fast enough for a live run; STOPLINE_MODEL overrides it
+
 RUNBOOK_INCIDENT = (
     "checkout-api version v2 is failing; the last good version is v1. "
     "Runbook for this incident: worker one rolls checkout-api back to v1, then restarts checkout-worker. "
@@ -151,6 +153,16 @@ def build(cluster: str, port: int, voice: bool = False, model: bool = False,
         from . import voice as spoken
 
         spoken.watch(database)
+    try:
+        from . import search
+    except ImportError:
+        search = None
+    if search is not None:
+        # "Ask the audit": plain questions answered with stored audit entries (needs a Voyage key).
+        app.include_router(search.search_routes(database))
+        watch = getattr(search, "watch", None)
+        if watch is not None:
+            watch(database)
     return app
 
 
@@ -165,6 +177,8 @@ def main() -> None:
     args = parser.parse_args()
 
     os.environ["STOPLINE_SENDER_URL"] = f"http://127.0.0.1:{args.port}"  # worker processes inherit this
+    os.environ.setdefault("STOPLINE_MODEL", DEFAULT_MODEL)
+    os.environ.setdefault("STOPLINE_AGENT_MODEL", DEFAULT_MODEL)
     start_router(Path(tempfile.gettempdir()) / "stopline-router.sqlite")
     uvicorn.run(build(args.cluster, args.port, args.voice, args.model, args.database, args.fresh), host="127.0.0.1", port=args.port, log_level="warning")
 

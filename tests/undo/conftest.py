@@ -1,4 +1,4 @@
-"""Contract fakes for the gate and targets being built in other worktrees."""
+"""Contract fakes for the gate and the targets."""
 
 from dataclasses import fields
 from datetime import datetime, timedelta, timezone

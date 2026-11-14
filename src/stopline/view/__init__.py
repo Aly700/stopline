@@ -1,4 +1,4 @@
-"""The local judge page. The owner wires this factory to the shared services."""
+"""The local page. stopline.app wires this factory to the gate, the stage and the targets."""
 import asyncio
 from contextlib import asynccontextmanager
 from dataclasses import asdict
@@ -67,10 +67,22 @@ def create_app(db, stage, targets, numbers=None):
     def favicon():
         return Response(status_code=204)
 
+    last_key = {'n': 0}
+
+    def current_state():
+        # The last key pressed is part of what every open page shows, whoever pressed it.
+        return dict(read_state(db), last_key=dict(last_key) if last_key['n'] else None)
+
+    def remember(key, result):
+        last_key.update(n=last_key['n'] + 1, key=key, message=result.get('message', ''),
+                        pending=bool(result.get('pending')), lines=result.get('lines'))
+        feed.revision += 1
+        return result
+
     @app.get('/api/state')
     def state():
         try:
-            return read_state(db)
+            return current_state()
         except Exception:
             return JSONResponse({'pending': True, 'message': 'Atlas pending. Keeping the last confirmed state.'}, status_code=503)
 
@@ -94,7 +106,7 @@ def create_app(db, stage, targets, numbers=None):
                     last = feed.revision
                     payload = {'revision': last, 'connected': feed.connected}
                     try:
-                        payload['state'] = await run_in_threadpool(read_state, db)
+                        payload['state'] = await run_in_threadpool(current_state)
                     except Exception:
                         payload['pending'] = True
                     yield f'event: change\ndata: {json.dumps(payload)}\n\n'
@@ -110,18 +122,19 @@ def create_app(db, stage, targets, numbers=None):
         key = key.upper()
         commands = {'1': lambda: stage.start_run('flag'), '2': lambda: stage.start_run('stopline'),
                     'S': stage.press_stop, 'K': stage.cut_and_kill, 'W': stage.resume_worker,
-                    'R': stage.restore_and_reconcile, 'U': stage.undo, 'V': stage.validation_rejection}
+                    'R': stage.restore_and_reconcile, 'U': stage.undo, 'V': stage.validation_rejection,
+                    'X': lambda: stage.overreach()}
         if key == 'M':
             try:
                 lines = list(numbers()) if numbers is not None else []
-                return {'ok': True, 'lines': [str(line) for line in lines[:3]],
-                        'message': 'Measured results.' if lines else 'Numbers have not been measured.'}
+                return remember(key, {'ok': True, 'lines': [str(line) for line in lines[:3]],
+                                      'message': 'Measured results.' if lines else 'Numbers have not been measured.'})
             except Exception:
                 return {'ok': False, 'lines': [], 'message': 'Numbers are unavailable.'}
         if key not in commands:
             raise HTTPException(404, 'Unknown key.')
         try:
-            return serial(asdict(commands[key]()))
+            return remember(key, serial(asdict(commands[key]())))
         except Exception:
             return JSONResponse({'ok': False, 'pending': False, 'message': 'Request failed. Check the confirmed state before trying again.'}, status_code=503)
 

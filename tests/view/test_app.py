@@ -67,7 +67,7 @@ def test_demo_sequence_and_receipt(rig):
     assert any(r['undo'] == 'no_undo' for r in client.get('/api/state').json()['receipt']['rows'])
     assert len(client.post('/api/key/M').json()['lines']) == 3
     assert client.post('/api/key/V').json()['message'] == 'Database refused the malformed record.'
-    assert client.post('/api/key/X').status_code == 404
+    assert client.post('/api/key/Z').status_code == 404
 
 
 def test_rebuild_uses_stored_run_and_limits_trace_to_eight(rig):

@@ -26,7 +26,7 @@ def test_cli_only_publishes_proof_results_and_drops_scratch(tmp_path, monkeypatc
     from stopline import db as connection
     scratch, publication = MemoryDatabase(), MemoryDatabase()
     dropped = []
-    monkeypatch.setattr(connection, 'test_database', lambda lane: scratch)
+    monkeypatch.setattr(connection, 'test_database', lambda suite: scratch)
     monkeypatch.setattr(connection, 'database', lambda name: publication)
     monkeypatch.setattr(connection, 'drop_test_database', lambda db: dropped.append(db))
     output = tmp_path / 'out.json'
@@ -43,7 +43,7 @@ def test_cli_drops_scratch_even_when_output_write_fails(tmp_path, monkeypatch, c
     from stopline import db as connection
     scratch = MemoryDatabase()
     dropped = []
-    monkeypatch.setattr(connection, 'test_database', lambda lane: scratch)
+    monkeypatch.setattr(connection, 'test_database', lambda suite: scratch)
     monkeypatch.setattr(connection, 'database', lambda name: MemoryDatabase())
     monkeypatch.setattr(connection, 'drop_test_database', lambda db: dropped.append(db))
     assert main(['--backend', 'fake', '--out', str(tmp_path)]) == 2
@@ -53,7 +53,7 @@ def test_cli_drops_scratch_even_when_output_write_fails(tmp_path, monkeypatch, c
 
 def test_cli_cleanup_failure_is_a_failure(tmp_path, monkeypatch, capsys):
     from stopline import db as connection
-    monkeypatch.setattr(connection, 'test_database', lambda lane: MemoryDatabase())
+    monkeypatch.setattr(connection, 'test_database', lambda suite: MemoryDatabase())
     monkeypatch.setattr(connection, 'database', lambda name: MemoryDatabase())
 
     def cannot_drop(db):
