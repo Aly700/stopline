@@ -67,6 +67,9 @@ def test_flag_run_lets_an_action_start_after_the_stop(system):
     run = system.db[RUNS].find_one({"_id": run_id})
     restarted = system.db[EFFECTS].find_one({"_id": restart})
     assert restarted["evidence"]["at_epoch"] > run["stop_at_local"], "the target's own clock puts it after the stop"
+    cluster = system.targets["cluster"].state()["deployments"]
+    assert cluster["checkout-api"]["version"] == "v1", "the cluster itself shows the rollback"
+    assert cluster["checkout-worker"]["restarted_at"], "the cluster itself shows the restart"
     until(lambda: task_of(system, run_id, WORKER_TWO).get("status") == TaskStatus.STOPPED, "worker two saw the flag")
     assert state_of(system, shift_50) is None
     until(lambda: workers_gone(system, run_id), "workers exited")

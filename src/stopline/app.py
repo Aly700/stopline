@@ -26,7 +26,7 @@ import uvicorn
 
 from . import db as stopline_db
 from .contract import PAGE_PORT, ROUTER_PORT, Hold, StageResult
-from .wire import sender_routes
+from .wire import sender_routes, target_routes
 
 
 def _port_open(port: int) -> bool:
@@ -89,6 +89,9 @@ def build(cluster: str, port: int, voice: bool = False) -> Any:
     stage = ResettingStage(build_stage(database, gate, targets, sender, cluster=cluster), targets, reset_all)
     app = create_app(database, stage, targets, numbers=lambda: summary(database))
     app.include_router(sender_routes(sender))
+    if cluster == "mock":
+        app.include_router(target_routes("cluster", targets["cluster"]))
+        os.environ["STOPLINE_TARGETS_URL"] = f"http://127.0.0.1:{port}"  # baseline workers share this mock
     try:
         from .report import report_routes
     except ImportError:

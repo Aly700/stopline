@@ -1,6 +1,7 @@
 """Target factories; importing the mock setup does not require Kubernetes."""
 
 from collections.abc import Mapping
+import os
 
 from stopline.contract import ROUTER_URL, GateAPI, Sender, TargetAdapter
 
@@ -12,8 +13,14 @@ def build_targets(cluster: str = 'kind', router_url: str = ROUTER_URL) -> dict[s
         from .kube import KubeCluster
         adapter = KubeCluster()
     elif cluster == 'mock':
-        from .mock import MockCluster
-        adapter = MockCluster()
+        shared = os.environ.get('STOPLINE_TARGETS_URL')
+        if shared:
+            # A worker process: use the one mock cluster that lives in the main process.
+            from stopline.wire import RemoteTarget
+            adapter = RemoteTarget('cluster', shared)
+        else:
+            from .mock import MockCluster
+            adapter = MockCluster()
     else:
         raise ValueError(f'unknown cluster: {cluster}')
     return {'cluster': adapter, 'router': RouterAdapter(router_url)}

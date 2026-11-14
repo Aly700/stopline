@@ -26,7 +26,7 @@ from stopline.agents import build_stage
 from stopline.contract import PAGE_PORT, ROUTER_PORT
 from stopline.gate import build_gate
 from stopline.targets import build_sender, build_targets, reset_all
-from stopline.wire import sender_routes
+from stopline.wire import sender_routes, target_routes
 
 CLUSTER = os.environ.get("STOPLINE_E2E_CLUSTER", "mock")
 
@@ -56,6 +56,9 @@ def system():
     stage = build_stage(database, gate, targets, sender, cluster=CLUSTER)
     app = FastAPI()
     app.include_router(sender_routes(sender))
+    if CLUSTER == "mock":
+        app.include_router(target_routes("cluster", targets["cluster"]))
+        os.environ["STOPLINE_TARGETS_URL"] = f"http://127.0.0.1:{PAGE_PORT}"
     server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=PAGE_PORT, log_level="warning"))
     threading.Thread(target=server.run, daemon=True).start()
     wait_for_port(PAGE_PORT)
