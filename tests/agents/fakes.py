@@ -13,7 +13,7 @@ from pymongo.errors import DuplicateKeyError, WriteError
 
 from stopline.contract import (
     Admission, Claim, EffectState, HandDown, Lookup, NotClaimed, Reason, SendResult,
-    TargetTimeout, TargetUnreachable, args_hash, system_of,
+    TargetTimeout, TargetUnreachable, Tool, args_hash, system_of,
 )
 
 
@@ -153,9 +153,10 @@ class Gate:
             mandate = self.db.mandates.find_one({"_id": action.mandate_id})
             if mandate["status"] == "revoked":
                 detail = {key: mandate[key] for key in ("revoked_by", "revoked_at", "revoked_at_seq")}
-                self.db.audit.insert_one(dict(kind="deny", principal=action.principal,
-                                              at=now(), action_id=action.action_id, detail=detail))
-                return Admission(False, action.action_id, Reason.REVOKED, detail=detail)
+                return self._deny(action, Reason.REVOKED, detail)
+            if (action.tool == Tool.SHIFT
+                    and action.args["percent"] > mandate["limits"]["max_shift_percent"]):
+                return self._deny(action, Reason.LIMIT_EXCEEDED, {})
             if not self.db.effects.find_one({"_id": action.action_id}):
                 chain = [mandate["root_id"], mandate["parent_id"], mandate["_id"]]
                 self.db.effects.insert_one(dict(
@@ -166,6 +167,13 @@ class Gate:
                     admitted_seq=1, state="admitted", evidence=None,
                 ))
             return Admission(True, action.action_id, Reason.OK)
+
+    def _deny(self, action, reason, detail):
+        detail = {"tool": action.tool, "target": action.target, "args": action.args, **detail}
+        self.db.audit.insert_one(dict(kind="deny", run_id=action.run_id, principal=action.principal,
+                                      mandate_id=action.mandate_id, reason=reason,
+                                      at=now(), action_id=action.action_id, detail=detail))
+        return Admission(False, action.action_id, reason, detail=detail)
 
     def claim(self, action_id, by):
         with self.db.lock:

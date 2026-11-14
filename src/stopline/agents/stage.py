@@ -16,14 +16,14 @@ import httpx
 from pymongo.errors import OperationFailure
 
 from stopline.contract import (
-    DEMO_HOLDS, DEMO_PLAN, EffectState, Mode, OPERATOR, PAGE_PORT, REPAIR_AGENT,
-    ROUTER, Reason, StageResult, TaskStatus, TargetTimeout, TargetUnreachable,
-    UndoMark, WORKER_ONE, WORKER_TWO, action_id_for, system_of,
+    Action, DEMO_HOLDS, DEMO_PLAN, EffectState, Mode, OPERATOR, PAGE_PORT, REPAIR_AGENT,
+    ROUTER, Reason, StageResult, TARGET_REGION_B, TaskStatus, TargetTimeout, TargetUnreachable,
+    Tool, UndoMark, WORKER_ONE, WORKER_TWO, action_id_for, system_of,
 )
 from stopline.db import run_transaction
 from .planner import ScriptedPlanner
 from .repair import RepairAgent
-from .worker import utcnow
+from .worker import refusal_note, utcnow
 
 
 WORKERS = (WORKER_ONE, WORKER_TWO)
@@ -41,6 +41,7 @@ class Stage:
         self.planner = ScriptedPlanner()
         self.run_id = None
         self._starting = False
+        self._overreach_count = 0
         self._processes = {}
         self._jobs = {}
         self._job_lock = threading.Lock()
@@ -48,9 +49,9 @@ class Stage:
         self._cached_status = {"run": None, "tasks": [], "receipt_id": None}
         self.wait_seconds = 1.5
 
-    def _command(self, name, operation, run_id=None, *, serial=True):
+    def _command(self, name, operation, run_id=None, *, serial=True, job_key=None):
         """Do slow work once in the background; repeated pending keys reuse it."""
-        key = (run_id, name)
+        key = (run_id, job_key or name)
         with self._job_lock:
             future = self._jobs.get(key)
             if future is None or future.done():
@@ -258,6 +259,41 @@ class Stage:
     def undo(self):
         run_id = self.run_id
         return self._command("undo", lambda: self._undo(run_id), run_id)
+
+    def overreach(self):
+        with self._job_lock:
+            run_id = self.run_id
+            self._overreach_count += 1
+            action_id = f"{run_id}-worker-2-over-{self._overreach_count}"
+        # Each press asks a fresh question, even while an earlier one is pending.
+        return self._command("overreach", lambda: self._overreach(run_id, action_id),
+                             run_id, job_key=action_id)
+
+    def _overreach(self, run_id, action_id):
+        if run_id is None:
+            return StageResult(False, "Start a StopLine run first.")
+        run = self._run(run_id)
+        if run["mode"] != Mode.STOPLINE:
+            return StageResult(False, "Start a StopLine run first: a baseline run has no check to refuse it.",
+                               run_id=run_id)
+        worker = self.db.tasks.find_one({"_id": f"{run_id}:{WORKER_TWO}"})
+        if not worker or not worker["mandate_id"]:
+            return StageResult(False, "Worker two has no saved permission yet.", run_id=run_id)
+        admitted = self.gate.admit(Action(
+            action_id=action_id, run_id=run_id, mandate_id=worker["mandate_id"],
+            principal=WORKER_TWO, tool=Tool.SHIFT, target=TARGET_REGION_B, args={"percent": 90},
+        ))
+        if admitted.allowed:
+            outcome = "The gate allowed it. It was not sent."
+        elif admitted.reason == Reason.LIMIT_EXCEEDED:
+            outcome = "Refused: its permission allows at most 50%."
+        else:
+            outcome = refusal_note(admitted)
+        message = f"Worker two asked to shift 90%. {outcome}"
+        self._note(run_id, WORKER_TWO, message)
+        return StageResult(not admitted.allowed, message, run_id=run_id, detail={
+            "action_id": action_id, "allowed": admitted.allowed, "reason": admitted.reason,
+        })
 
     def _mark_undo(self, action_id, result):
         mark = {EffectState.APPLIED: UndoMark.UNDONE, EffectState.SENT: UndoMark.UNKNOWN}.get(result["state"])

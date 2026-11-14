@@ -15,6 +15,7 @@ from .test_stage import eventually, rig, start_held, task
     ("restore_and_reconcile", "_reconcile", ()),
     ("undo", "_undo", ()),
     ("validation_rejection", "_validate", ()),
+    ("overreach", "_overreach", ()),
     ("status", None, ()),
 ])
 def test_every_stage_call_returns_pending_within_two_seconds(rig, monkeypatch, method, implementation, args):
