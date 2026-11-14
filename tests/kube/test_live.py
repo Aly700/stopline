@@ -10,10 +10,12 @@ from pathlib import Path
 import subprocess
 import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
 
 import pytest
 
-from stopline.contract import Action, TARGET_API, TARGET_WORKER, Tool
+from stopline.contract import Action, Reason, TARGET_API, TARGET_WORKER, TargetTimeout, TargetUnreachable, Tool, args_hash
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -113,6 +115,7 @@ def test_send_has_deployment_and_replicaset_evidence(kube, tool, target, args):
     deployment = kubectl("get", "deployment", target.split("/")[1])
     annotations = deployment["spec"]["template"]["metadata"]["annotations"]
     assert annotations[ACTION_ID] == request.action_id
+    assert annotations["stopline.dev/args-hash"] == args_hash(request.args)
 
     def history_contains_id():
         return any(rs["spec"]["template"]["metadata"].get("annotations", {}).get(ACTION_ID)
@@ -149,3 +152,142 @@ def test_reset_clears_history_under_ten_seconds(kube):
     print(f"reset completed in {duration:.2f}s")
     assert_initial_state(kube)
     assert kube.lookup(request.action_id).found is False
+
+
+def test_repeat_applies_once_even_from_new_instances_and_threads(kube):
+    request = action(Tool.RESTART, TARGET_WORKER)
+    before = kubectl("get", "deployment", "checkout-worker")["metadata"]["generation"]
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        results = list(pool.map(lambda _: type(kube)().send(request), range(4)))
+    assert all(result == results[0] and result.applied for result in results)
+    assert kubectl("get", "deployment", "checkout-worker")["metadata"]["generation"] == before + 1
+    kube.send(action(Tool.RESTART, TARGET_WORKER))
+    generation = kubectl("get", "deployment", "checkout-worker")["metadata"]["generation"]
+    assert type(kube)().send(request) == results[0]
+    assert kubectl("get", "deployment", "checkout-worker")["metadata"]["generation"] == generation
+
+
+def test_same_id_with_changed_arguments_tool_or_target_is_refused(kube):
+    request = action(Tool.ROLLBACK, TARGET_API, {"to_version": "v1"})
+    original = kube.send(request)
+    for changed in (
+        replace(request, args={"to_version": "v2"}),
+        replace(request, tool=Tool.RESTART),
+        replace(request, target=TARGET_WORKER),
+    ):
+        result = type(kube)().send(changed)
+        assert not result.applied
+        assert result.reason == Reason.SAME_ID_DIFFERENT_ARGS
+    assert kube.lookup(request.action_id).evidence == original.evidence
+
+
+def test_fence_survives_adapter_recreation_and_reset_clears_it(kube):
+    request = action(Tool.RESTART, TARGET_WORKER)
+    evidence = kube.fence(request.action_id)
+    assert evidence["action_id"] == request.action_id
+    assert evidence["system"] == "cluster"
+    assert evidence["fenced"] is True
+    assert abs(evidence["at_epoch"] - time.time()) < 10
+    assert type(kube)().fence(request.action_id) == evidence
+    for target in (TARGET_API, TARGET_WORKER):
+        result = type(kube)().send(replace(request, target=target))
+        assert not result.applied and result.reason == Reason.FENCED
+    lookup = kube.lookup(request.action_id)
+    assert lookup.found and not lookup.applied
+    assert lookup.evidence == evidence
+    started = time.monotonic()
+    kube.reset()
+    assert time.monotonic() - started < 10
+    assert not kube.lookup(request.action_id).found
+    assert kube.send(request).applied
+
+
+def test_fence_does_not_hide_an_already_applied_action(kube):
+    request = action(Tool.RESTART, TARGET_WORKER)
+    result = kube.send(request)
+    kube.fence(request.action_id)
+    lookup = kube.lookup(request.action_id)
+    assert lookup.applied and lookup.evidence == result.evidence
+    replay = kube.send(request)
+    assert not replay.applied and replay.reason == Reason.FENCED
+
+
+def test_cut_and_restore(kube):
+    request = action(Tool.ROLLBACK, TARGET_API, {"to_version": "v1"})
+    kube.cut()
+    with pytest.raises(TargetUnreachable):
+        kube.send(request)
+    assert kube.state()["reachable"] is False
+    kube.restore()
+    assert_initial_state(kube)
+    assert kube.send(request).applied
+
+
+def test_lost_patch_response_is_unknown_then_found_without_reapplying(kube, monkeypatch):
+    request = action(Tool.ROLLBACK, TARGET_API, {"to_version": "v1"})
+    run = subprocess.run
+    patches = []
+
+    def lose_response(command, **kwargs):
+        result = run(command, **kwargs)
+        if "patch" in command:
+            assert result.returncode == 0, result.stderr
+            patches.append(command)
+            raise subprocess.TimeoutExpired(command, kwargs["timeout"])
+        return result
+
+    with monkeypatch.context() as patch:
+        patch.setattr(subprocess, "run", lose_response)
+        with pytest.raises(TargetTimeout):
+            kube.send(request)
+    assert len(patches) == 1
+    lookup = type(kube)().lookup(request.action_id)
+    assert lookup.found and lookup.applied
+    generation = kubectl("get", "deployment", "checkout-api")["metadata"]["generation"]
+    result = type(kube)().send(request)
+    assert result.applied and result.evidence == lookup.evidence
+    assert kubectl("get", "deployment", "checkout-api")["metadata"]["generation"] == generation
+
+
+def test_back_to_back_actions_leave_both_replicasets(kube):
+    requests = [action(Tool.RESTART, TARGET_WORKER) for _ in range(3)]
+    for request in requests:
+        assert kube.send(request).applied
+    expected = {request.action_id for request in requests}
+    eventually(lambda: expected <= {
+        rs["spec"]["template"]["metadata"].get("annotations", {}).get(ACTION_ID)
+        for rs in kubectl("get", "replicasets")["items"]
+    })
+    assert all(type(kube)().lookup(request.action_id).applied for request in requests)
+
+
+def test_send_accepts_without_rollout_but_keeps_unarchived_evidence(kube):
+    kubectl("patch", "deployment", "checkout-worker", "--type=merge", "-p", '{"spec":{"paused":true}}')
+    first = action(Tool.RESTART, TARGET_WORKER)
+    started = time.monotonic()
+    assert kube.send(first).applied
+    assert time.monotonic() - started < 5
+    # A paused controller cannot copy the first template into a ReplicaSet.
+    # A second action must not erase that first action's only target record.
+    with pytest.raises(TargetUnreachable):
+        kube.send(action(Tool.RESTART, TARGET_WORKER))
+    assert kube.lookup(first.action_id).applied
+
+
+def test_send_retries_a_resource_version_conflict(kube, monkeypatch):
+    request = action(Tool.RESTART, TARGET_WORKER)
+    run = subprocess.run
+    injected = False
+
+    def change_resource_version(command, **kwargs):
+        nonlocal injected
+        if "patch" in command and not injected:
+            injected = True
+            kubectl("annotate", "deployment", "checkout-worker", "test-edit=conflict", "--overwrite")
+        return run(command, **kwargs)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(subprocess, "run", change_resource_version)
+        assert kube.send(request).applied
+    assert injected
+    assert kube.lookup(request.action_id).applied
