@@ -153,7 +153,7 @@ def test_failed_claim_and_stop_are_audited(gate, run_id):
     mandate, proposed = sent_action(gate, run_id)
     denied = call("claim_again", gate.claim, proposed.action_id, "another-sender")
     assert not denied.claimed
-    assert gate.db.audit.find_one({"action_id": proposed.action_id, "kind": "claim", "reason": Reason.NOT_ADMITTED})
+    assert gate.db.audit.find_one({"action_id": proposed.action_id, "kind": "deny", "reason": Reason.NOT_ADMITTED})
     with pytest.raises(NotAuthorised):
         call("stop_refused", gate.stop, mandate_id=mandate["_id"], by="stranger")
     assert gate.db.audit.find_one({"run_id": run_id, "kind": "deny", "reason": Reason.NOT_AUTHORISED})
@@ -316,3 +316,31 @@ def test_8_deny_survives_abort_and_an_intervening_stop(gate, run_id, monkeypatch
     assert gate.db.audit.find_one({"action_id": proposed.action_id, "kind": "deny"})
     assert receipt["covered"] == [] and receipt["stop_seq"] == 1
     assert not call("receipt", gate.receipt, receipt["_id"]).rows
+
+
+def test_chain_reads_effect_and_audit_from_one_snapshot(gate, run_id, monkeypatch):
+    mandate, proposed = sent_action(gate, run_id)
+    pause = Pause()
+    original = Collection.find_one
+    armed = True
+
+    def hold_first_effect_read(collection, query=None, *args, **kwargs):
+        nonlocal armed
+        result = original(collection, query, *args, **kwargs)
+        if armed and collection.full_name == gate.db.effects.full_name and query == {"_id": proposed.action_id}:
+            armed = False
+            pause.hold()
+        return result
+
+    monkeypatch.setattr(Collection, "find_one", hold_first_effect_read)
+    with ThreadPoolExecutor(1) as pool:
+        pending = pool.submit(call, "chain", gate.chain, proposed.action_id)
+        try:
+            pause.wait()
+            call("outcome", gate.record_outcome, proposed.action_id, "applied", evidence(proposed.action_id))
+        finally:
+            pause.release.set()
+        view = pending.result(timeout=20)
+    assert view.effect["state"] == "sent"
+    assert not [entry for entry in view.audit if entry["kind"] == "outcome"]
+    assert gate.db.effects.find_one({"_id": proposed.action_id})["state"] == "applied"

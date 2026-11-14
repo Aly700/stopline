@@ -193,5 +193,12 @@ def test_identity_and_stop_authorisation(gate, run_id):
         call("stop_unauthorised", gate.stop, mandate_id=mandate["_id"], by="stranger")
     receipt = call("stop", gate.stop, mandate_id=mandate["_id"], by=OPERATOR)
     assert receipt["status"] == "closed"
-    assert call("admit_replay_after_stop", gate.admit, proposed).replayed
+    existing = gate.db.effects.find_one({"_id": proposed.action_id})
+    replay = call("admit_replay_after_stop", gate.admit, proposed)
+    assert not replay.allowed and replay.reason == Reason.REVOKED and not replay.replayed
+    assert replay.detail == {"revoked_by": OPERATOR, "revoked_at": receipt["stopped_at"],
+                             "revoked_at_seq": receipt["stop_seq"]}
+    assert gate.db.effects.find_one({"_id": proposed.action_id}) == existing
+    assert proposed.action_id in receipt["covered"]
+    assert gate.db.audit.find_one({"action_id": proposed.action_id, "kind": "deny", "reason": Reason.REVOKED})
     assert not call("claim", gate.claim, proposed.action_id, "sender").claimed

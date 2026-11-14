@@ -232,6 +232,8 @@ class Gate:
                     except Refused as error:
                         context = error.context
                     raise Refused(Reason.SAME_ID_DIFFERENT_ARGS, context)
+                context = self._context(session, action.mandate_id)
+                self._check_chain(context)
                 return Admission(True, action.action_id, Reason.OK, existing["admitted_seq"], replayed=True)
             context = self._context(session, action.mandate_id)
             self._check_chain(context)
@@ -319,7 +321,7 @@ class Gate:
                 detail = {key: mandate[key] for key in ("revoked_by", "revoked_at", "revoked_at_seq")}
         source = effect or {}
         self.db.audit.insert_one(self._audit(
-            run_id=source.get("run_id", ""), kind=AuditKind.CLAIM, principal=by,
+            run_id=source.get("run_id", ""), kind=AuditKind.DENY, principal=by,
             mandate_id=source.get("mandate_id"), root_id=source.get("root_id"), action_id=action_id,
             seq=source.get("admitted_seq"), at=source.get("_observed_at") or self._now(),
             reason=reason, detail={"state": state, **detail}))
@@ -463,15 +465,19 @@ class Gate:
         return list(reversed(ids))
 
     def receipt(self, receipt_id: str) -> ReceiptView:
-        receipt = self.db.receipts.find_one({"_id": receipt_id})
+        view, _ = storage.run_transaction(lambda session: self._read_receipt(receipt_id, session))
+        return view
+
+    def _read_receipt(self, receipt_id, session):
+        receipt = self.db.receipts.find_one({"_id": receipt_id}, session=session)
         if receipt is None:
             raise KeyError(receipt_id)
-        mandates = {m["_id"]: m for m in self.db.mandates.find({"root_id": receipt["root_id"]})}
-        effects = list(self.db.effects.find({"_id": {"$in": receipt["covered"]}}).sort("admitted_seq", 1))
+        mandates = {m["_id"]: m for m in self.db.mandates.find({"root_id": receipt["root_id"]}, session=session)}
+        effects = list(self.db.effects.find({"_id": {"$in": receipt["covered"]}}, session=session).sort("admitted_seq", 1))
         refusals = list(self.db.audit.find({"run_id": receipt["run_id"], "kind": AuditKind.DENY,
             "root_id": receipt["root_id"], "seq": {"$gt": receipt["stop_seq"]},
             "mandate_id": {"$in": receipt["revoked"]}, "action_id": {"$ne": None},
-        }).sort([("seq", 1), ("at", 1), ("_id", 1)]))
+        }, session=session).sort([("seq", 1), ("at", 1), ("_id", 1)]))
 
         def chain(ids):
             return [{"mandate_id": identity, "holder": mandates[identity]["holder"],
@@ -492,11 +498,15 @@ class Gate:
         return ReceiptView(receipt, rows, receipt["status"] == "open")
 
     def chain(self, action_id: str) -> ChainView:
-        effect = self.db.effects.find_one({"_id": action_id})
-        audit = list(self.db.audit.find({"action_id": action_id}).sort([("at", 1), ("_id", 1)]))
+        view, _ = storage.run_transaction(lambda session: self._read_chain(action_id, session))
+        return view
+
+    def _read_chain(self, action_id, session):
+        effect = self.db.effects.find_one({"_id": action_id}, session=session)
+        audit = list(self.db.audit.find({"action_id": action_id}, session=session).sort([("at", 1), ("_id", 1)]))
         root_id = effect["root_id"] if effect else next((e["root_id"] for e in audit if e["root_id"]), None)
-        mandates = {m["_id"]: m for m in self.db.mandates.find({"root_id": root_id})} if root_id else {}
+        mandates = {m["_id"]: m for m in self.db.mandates.find({"root_id": root_id}, session=session)} if root_id else {}
         ids = effect["chain"] if effect else self._chain_ids(audit[-1]["mandate_id"], mandates) if audit else []
         version = effect["policy_version"] if effect else audit[-1]["policy_version"] if audit else None
-        policy = self.db.policies.find_one({"_id": version}) if version is not None else None
+        policy = self.db.policies.find_one({"_id": version}, session=session) if version is not None else None
         return ChainView(action_id, effect, [mandates[i] for i in ids if i in mandates], policy, audit)
