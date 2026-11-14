@@ -188,7 +188,7 @@ STOPLINE_E2E_CLUSTER=kind uv run pytest tests/e2e -o addopts=""   # the same on 
 uv run pytest tests/soak -s -o addopts=""             # stops at random moments, checked against receipts and targets
 ```
 
-Tests create their own databases and drop them.
+Tests create their own databases and drop them. Two tests call a live language model; they run only with `STOPLINE_LIVE=1`.
 
 ## What was measured
 

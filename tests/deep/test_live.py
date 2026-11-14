@@ -1,3 +1,4 @@
+import os
 """Run the isolated demonstration only when a model credential is available."""
 
 import json
@@ -10,6 +11,8 @@ from stopline.deep import model_configured
 
 
 def test_live_stop_after_two_actions():
+    if os.environ.get('STOPLINE_LIVE') != '1':
+        pytest.skip('Set STOPLINE_LIVE=1 to run against a live model.')
     if not model_configured():
         pytest.skip('No model API key is set.')
     pytest.importorskip('deepagents')
