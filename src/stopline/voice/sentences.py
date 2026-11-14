@@ -6,6 +6,16 @@ from collections.abc import Iterable
 from stopline.contract import AuditEntry, Effect, Receipt, Tool
 
 
+# Exactly the clips produced for the demo's open receipt, its close, and flag run.
+DEMO_SENTENCES = (
+    'Stop confirmed. One completed. One unknown. Two blocked.',
+    'The receipt is open.',
+    'The router answered. The traffic shift was applied.',
+    'The receipt is closed.',
+    'Stop pressed. One action ran after the stop.',
+)
+
+
 def _number(count: int) -> str:
     words = ('no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight',
              'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen')

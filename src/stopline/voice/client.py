@@ -44,7 +44,12 @@ def read_key() -> str:
             key = (Path.home() / '.elevenlabs_key').read_text()
         except OSError:
             key = ''
-    return key.strip()
+    key = key.strip()
+    # HTTP debug logging includes the offending header on protocol errors.
+    # Reject control/non-ASCII characters before handing the key to httpx.
+    if any(ord(character) < 33 or ord(character) > 126 for character in key):
+        return ''
+    return key
 
 
 def note(reason: str) -> None:
@@ -82,6 +87,12 @@ class SpeechClient:
     def say(self, text: str) -> Future[Path | None]:
         """Return immediately; the future resolves after playback, never raises."""
         return self._submit(text, True)
+
+    def warm(self, sentences) -> list[Future]:
+        """Queue generation only; repeated text uses the same cache entry."""
+        if not enabled():
+            return []
+        return [self._submit(text, False) for text in sentences]
 
     def _submit(self, text: str, playback: bool) -> Future:
         if not enabled() or self._closed.is_set():

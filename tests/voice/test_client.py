@@ -106,3 +106,55 @@ def test_cache_survives_client_restart(client, speech_server, tmp_path):
         assert len(speech_server.requests) == 1
     finally:
         other.close()
+
+
+def test_warm_caches_without_playback(client, speech_server):
+    futures = client.warm(['Stop confirmed.', 'Stop confirmed.'])
+    paths = [future.result(3) for future in futures]
+    assert paths[0] == paths[1] and paths[0] is not None
+    assert not client.played
+    assert len(speech_server.requests) == 1
+    assert client.say('Stop confirmed.').result(3) == paths[0]
+    assert len(speech_server.requests) == 1
+
+
+def test_cache_key_includes_voice_and_model(client, speech_server, monkeypatch):
+    first = client.say('Stop confirmed.').result(3)
+    monkeypatch.setenv('STOPLINE_VOICE_ID', 'second-voice')
+    second = client.say('Stop confirmed.').result(3)
+    monkeypatch.setattr('stopline.voice.client.MODEL', 'second-model')
+    third = client.say('Stop confirmed.').result(3)
+    assert len({first, second, third}) == 3
+    assert len(speech_server.requests) == 3
+
+
+def test_two_clients_generate_same_clip_once(client, speech_server, tmp_path):
+    speech_server.delay = .15
+    other = SpeechClient(cache_dir=tmp_path, base_url=speech_server.url, player=lambda path: None)
+    try:
+        a = client.say('Stop confirmed.')
+        b = other.say('Stop confirmed.')
+        assert a.result(3) == b.result(3)
+        assert len(speech_server.requests) == 1
+    finally:
+        other.close()
+
+
+def test_network_failure_is_sanitized(client, monkeypatch, caplog):
+    import httpx
+
+    async def offline(*args, **kwargs):
+        raise httpx.ConnectError('test-secret-never-log')
+
+    monkeypatch.setattr(httpx.AsyncClient, 'post', offline)
+    assert client.say('Stop confirmed.').result(3) is None
+    assert 'test-secret-never-log' not in caplog.text
+    assert len(caplog.records) == 1
+
+
+def test_malformed_key_never_reaches_http_logs(client, monkeypatch, caplog, speech_server):
+    caplog.set_level(logging.DEBUG)
+    monkeypatch.setenv('ELEVENLABS_API_KEY', 'test-secret-never-log\ninvalid')
+    assert client.say('Stop confirmed.').result(3) is None
+    assert 'test-secret-never-log' not in caplog.text
+    assert not speech_server.requests
