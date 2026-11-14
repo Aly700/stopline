@@ -242,6 +242,13 @@ async function keypress(key) {
     status('Opened the run report.');
     return;
   }
+  if (key === 'T') {
+    latestKey = key;
+    if (!current?.run?.trace_url) { status('This run has no model trace.'); return; }
+    window.open(current.run.trace_url, '_blank', 'noopener');
+    status('Opened the model trace in LangSmith.');
+    return;
+  }
   if (key === 'M' && $('numbers-dialog').open) { $('numbers-dialog').close(); return; }
   busy = true; latestKey = key; status('pending', true);
   const beforeRun = current?.run?._id;
@@ -333,7 +340,7 @@ document.addEventListener('keydown', event => {
   }
   if (event.repeat || event.ctrlKey || event.metaKey || event.altKey || /INPUT|TEXTAREA|SELECT/.test(event.target.tagName)) return;
   const key = event.key.toUpperCase();
-  if (!'123SKWRUVMPX/'.includes(key) || key.length !== 1 || $('chain-dialog').open) return;
+  if (!'123SKWRUVMPXT/'.includes(key) || key.length !== 1 || $('chain-dialog').open) return;
   if ($('numbers-dialog').open && key !== 'M') $('numbers-dialog').close();
   event.preventDefault(); keypress(key);
 });
