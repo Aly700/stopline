@@ -103,14 +103,21 @@ def model_planner(database: Any) -> Any:
     return ModelPlanner(call_model, SavedPlanner(database))
 
 
-def build(cluster: str, port: int, voice: bool = False, model: bool = False) -> Any:
+RUN_COLLECTIONS = ("principals", "mandates", "effects", "audit", "receipts", "tasks", "runs")
+
+
+def build(cluster: str, port: int, voice: bool = False, model: bool = False,
+          database_name: str = "stopline", fresh: bool = False) -> Any:
     from .agents import build_stage
     from .gate import build_gate
     from .proof import summary
     from .targets import build_sender, build_targets, reset_all
     from .view import create_app
 
-    database = stopline_db.database()
+    database = stopline_db.database(database_name)
+    if fresh:
+        for name in RUN_COLLECTIONS:   # earlier runs only; the measured numbers are kept
+            database[name].delete_many({})
     gate = build_gate(database)
     gate.setup()
     targets = build_targets(cluster)
@@ -153,11 +160,13 @@ def main() -> None:
     parser.add_argument("--port", type=int, default=PAGE_PORT)
     parser.add_argument("--voice", action="store_true", help="speak the receipt when a run is stopped")
     parser.add_argument("--model", action="store_true", help="let a language model plan the repair (needs GEMINI_API_KEY)")
+    parser.add_argument("--database", default=os.environ.get("STOPLINE_DATABASE", "stopline"))
+    parser.add_argument("--fresh", action="store_true", help="clear earlier runs from the database before starting")
     args = parser.parse_args()
 
     os.environ["STOPLINE_SENDER_URL"] = f"http://127.0.0.1:{args.port}"  # worker processes inherit this
     start_router(Path(tempfile.gettempdir()) / "stopline-router.sqlite")
-    uvicorn.run(build(args.cluster, args.port, args.voice, args.model), host="127.0.0.1", port=args.port, log_level="warning")
+    uvicorn.run(build(args.cluster, args.port, args.voice, args.model, args.database, args.fresh), host="127.0.0.1", port=args.port, log_level="warning")
 
 
 if __name__ == "__main__":
