@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>StopLine — the stop and the receipt</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header>
+    <div class="brand">StopLine<span>Every action accounted for.</span></div>
+    <div class="mode"><span id="mode">READY</span><span id="run-label">Press 1 to begin</span></div>
+  </header>
+  <main id="main">
+    <section class="trace" aria-labelledby="trace-title">
+      <div class="section-heading"><h1 id="trace-title">The actions</h1><span id="connection" role="status">Connecting…</span></div>
+      <p id="permission-note" class="permission-note">A repair agent. Two workers. One stop.</p>
+      <div id="workers" class="workers"></div>
+      <div id="trace" class="trace-rows" aria-live="polite"></div>
+      <p id="omitted" class="quiet"></p>
+    </section>
+    <section class="targets" aria-labelledby="target-title">
+      <div class="section-heading"><h2 id="target-title">The systems themselves</h2></div>
+      <div id="targets"><p class="quiet">Waiting for the systems…</p></div>
+    </section>
+  </main>
+  <section id="receipt" class="receipt" aria-labelledby="receipt-title" hidden></section>
+  <footer>
+    <nav aria-label="Demo keys">
+      <button data-key="1"><kbd>1</kbd> Stop flag</button><button data-key="2"><kbd>2</kbd> StopLine</button>
+      <button data-key="S"><kbd>S</kbd> Stop</button><button data-key="K"><kbd>K</kbd> Cut + kill</button>
+      <button data-key="W"><kbd>W</kbd> Resume</button><button data-key="R"><kbd>R</kbd> Restore</button>
+      <button data-key="U"><kbd>U</kbd> Undo</button><button data-key="V"><kbd>V</kbd> Validation</button>
+      <button data-key="M"><kbd>M</kbd> Numbers</button>
+    </nav>
+    <div class="footnote"><span id="key-status" role="status">No key pressed.</span><span id="context">Timing controlled · router built for this test</span></div>
+  </footer>
+  <dialog id="chain-dialog" aria-labelledby="chain-title"><button class="close" data-close="chain-dialog">Close <kbd>Esc</kbd></button><h2 id="chain-title">This action’s permission</h2><div id="chain-content"></div></dialog>
+  <dialog id="numbers-dialog" aria-labelledby="numbers-title"><button class="close" data-close="numbers-dialog">Close <kbd>Esc</kbd></button><h2 id="numbers-title">The measured results</h2><div id="numbers-lines"></div><p class="quiet">Measured schedules only. An unanswered action remains unknown.</p></dialog>
+</body>
+</html>

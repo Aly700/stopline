@@ -1,0 +1,126 @@
+"""The local judge page. The owner wires this factory to the shared services."""
+import asyncio
+from contextlib import asynccontextmanager
+from dataclasses import asdict
+import json
+from pathlib import Path
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
+from starlette.concurrency import run_in_threadpool
+
+from .feed import ChangeFeed
+from .records import read_chain, read_state, serial
+
+ASSETS = Path(__file__).parent
+
+
+def create_app(db, stage, targets, numbers=None):
+    """Create without opening any connection; streams belong to the app lifespan.
+
+    Serve with uvicorn on 127.0.0.1:8765. The view only reads records and target
+    state; key commands go through the supplied StageAPI.
+    """
+    feed = ChangeFeed(db)
+
+    @asynccontextmanager
+    async def lifespan(app):
+        feed.start()
+        try:
+            yield
+        finally:
+            await run_in_threadpool(feed.close)
+
+    app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None)
+    app.state.feed = feed
+
+    @app.middleware('http')
+    async def local_page(request, call_next):
+        # Browser scripts may observe this page; only this page can issue keys.
+        origin = request.headers.get('origin')
+        if request.method == 'POST' and origin and origin != str(request.base_url).rstrip('/'):
+            return JSONResponse({'detail': 'Use the keys on this page.'}, status_code=403)
+        response = await call_next(request)
+        response.headers['Cache-Control'] = 'no-store'
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'"
+        return response
+
+    @app.get('/')
+    def page():
+        return FileResponse(ASSETS / 'index.html')
+
+    @app.get('/app.js')
+    def script():
+        return FileResponse(ASSETS / 'app.js', media_type='text/javascript')
+
+    @app.get('/style.css')
+    def stylesheet():
+        return FileResponse(ASSETS / 'style.css', media_type='text/css')
+
+    @app.get('/favicon.ico')
+    def favicon():
+        return Response(status_code=204)
+
+    @app.get('/api/state')
+    def state():
+        try:
+            return read_state(db)
+        except Exception:
+            return JSONResponse({'pending': True, 'message': 'Atlas pending. Keeping the last confirmed state.'}, status_code=503)
+
+    @app.get('/api/targets')
+    async def target_state():
+        async def read(name, target):
+            try:
+                return name, serial(await run_in_threadpool(target.state))
+            except Exception:
+                return name, {'system': name, 'reachable': False}
+        return dict(await asyncio.gather(*(read(name, target) for name, target in targets.items())))
+
+    @app.get('/api/events')
+    async def events(request: Request):
+        async def stream():
+            yield 'retry: 1000\nevent: rebuild\ndata: {}\n\n'
+            last = -1
+            heartbeat = 0
+            while not await request.is_disconnected():
+                if feed.revision != last:
+                    last = feed.revision
+                    data = json.dumps({'revision': last, 'connected': feed.connected})
+                    yield f'event: change\ndata: {data}\n\n'
+                await asyncio.sleep(.15)
+                heartbeat += 1
+                if heartbeat >= 65:
+                    yield ': keepalive\n\n'
+                    heartbeat = 0
+        return StreamingResponse(stream(), media_type='text/event-stream', headers={'X-Accel-Buffering': 'no'})
+
+    @app.post('/api/key/{key}')
+    def keypress(key: str):
+        key = key.upper()
+        commands = {'1': lambda: stage.start_run('flag'), '2': lambda: stage.start_run('stopline'),
+                    'S': stage.press_stop, 'K': stage.cut_and_kill, 'W': stage.resume_worker,
+                    'R': stage.restore_and_reconcile, 'U': stage.undo, 'V': stage.validation_rejection}
+        if key == 'M':
+            try:
+                lines = list(numbers()) if numbers is not None else []
+                return {'ok': True, 'lines': [str(line) for line in lines[:3]],
+                        'message': 'Measured results.' if lines else 'Numbers have not been measured.'}
+            except Exception:
+                return {'ok': False, 'lines': [], 'message': 'Numbers are unavailable.'}
+        if key not in commands:
+            raise HTTPException(404, 'Unknown key.')
+        try:
+            return serial(asdict(commands[key]()))
+        except Exception:
+            return JSONResponse({'ok': False, 'pending': False, 'message': 'Request failed. Check the confirmed state before trying again.'}, status_code=503)
+
+    @app.get('/api/chain/{action_id}')
+    def chain(action_id: str):
+        result = read_chain(db, action_id)
+        if result is None:
+            raise HTTPException(404, 'Action not found.')
+        return result
+
+    return app
