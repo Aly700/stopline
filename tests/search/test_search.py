@@ -215,6 +215,41 @@ def test_route_defaults_to_latest_run_and_always_200(voyage_server):
         assert client.get('/api/ask').json()['ok'] is False
 
 
+
+class AtlasCollection(Collection):
+    def __init__(self, rows=()):
+        super().__init__(rows)
+        self.indexes = []
+        self.creates = []
+        self.pipelines = []
+        self.empty_queries = 0
+        self.stale_queries = 0
+        self.ready = True
+
+    def create_index(self, key):
+        return key
+
+    def list_search_indexes(self, name=None):
+        return copy.deepcopy(self.indexes)
+
+    def create_search_index(self, model):
+        self.creates.append(model.document)
+        self.indexes = [dict(name=model.document['name'], queryable=self.ready,
+                             latestDefinition=model.document['definition'])]
+        return model.document['name']
+
+    def aggregate(self, pipeline, **kwargs):
+        self.pipelines.append(pipeline)
+        if self.empty_queries:
+            self.empty_queries -= 1
+            return []
+        rows = self.find(pipeline[0]['$vectorSearch']['filter'])
+        if self.stale_queries:
+            self.stale_queries -= 1
+            rows = rows[:1]
+        return [dict(row, score=0.9 if row['kind'] == 'deny' else 0.7) for row in rows]
+
+
 def test_atlas_index_and_filter(voyage_server):
     db = DB()
     atlas = db.collections['audit_search'] = AtlasCollection()
