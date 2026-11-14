@@ -83,13 +83,18 @@ def check_records(run, permissions, actions, audit, receipts, policies):
             scopes.append((entry.get("root_id"), {entry.get("mandate_id")}, entry["seq"]))
     failures = []
     failed_ids = set()
+    admissions = actions + [
+        {"_id": entry["action_id"], "root_id": entry.get("root_id"), "mandate_id": entry.get("mandate_id"),
+         "admitted_seq": entry.get("seq"), "chain": []}
+        for entry in audit if entry["kind"] == "allow" and entry.get("action_id")
+    ]
     for root, scope, stop_seq in scopes:
         while True:
             descendants = {p["_id"] for p in permissions if p.get("parent_id") in scope}
             if descendants <= scope:
                 break
             scope |= descendants
-        for action in actions:
+        for action in admissions:
             chain = set(action.get("chain", [])) | {action.get("mandate_id")}
             if action.get("root_id") == root and chain & scope and action.get("admitted_seq") is not None:
                 if action["admitted_seq"] > stop_seq and action["_id"] not in failed_ids:

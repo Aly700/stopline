@@ -23,7 +23,10 @@ def _json_value(value):
 
 
 def _time_key(row, field):
-    return (_json_value(row.get(field)) or "", row.get("seq") or row.get("admitted_seq") or 0, str(row.get("_id", "")))
+    at = row.get(field)
+    timestamp = at.replace(tzinfo=at.tzinfo or timezone.utc).timestamp() if at else float("-inf")
+    return (timestamp, row.get("seq") or row.get("admitted_seq") or row.get("counter") or 0,
+            str(row.get("_id", row.get("action_id", ""))))
 
 
 def build_report(db, run_id) -> dict:
@@ -111,6 +114,23 @@ def build_report(db, run_id) -> dict:
             "audit": audit_by_action[aid],
         })
     existing = {action["action_id"] for action in actions}
+    for entry in audit:
+        aid = entry.get("action_id")
+        if entry["kind"] != "allow" or not aid or aid in existing:
+            continue
+        detail = {**plans.get(aid, {}), **entry.get("detail", {})}
+        # An allow entry still names an action if its main record was deleted.
+        # Its frozen chain and target outcome are now missing, not inferred.
+        actions.append({
+            "action_id": aid, "principal": entry["principal"], "permission_id": entry.get("mandate_id"),
+            "chain_ids": [], "chain": [], "decision": "allowed", "outcome": "unknown", "missing": True,
+            "tool": detail.get("tool"), "target": detail.get("target"), "args": detail.get("args", {}),
+            "policy_version": entry.get("policy_version"), "policy_hash": entry.get("policy_hash"),
+            "counter": entry.get("seq"), "at": entry["at"], "reason": "missing_record", "stopped": None,
+            "evidence": None, "state": None, "reverses": None, "undo": None,
+            "undone_by": [other["_id"] for other in effects if other.get("reverses") == aid], "audit": audit_by_action[aid],
+        })
+        existing.add(aid)
     refusals = []
     for entry in audit:
         if entry["kind"] != "deny":
@@ -122,7 +142,7 @@ def build_report(db, run_id) -> dict:
             "action_id": aid, "principal": entry["principal"], "permission_id": entry.get("mandate_id"),
             "chain_ids": ids, "chain": describe_chain(ids), "decision": "refused", "outcome": "blocked",
             "tool": detail.get("tool"), "target": detail.get("target"), "args": detail.get("args", {}),
-            "policy_version": entry["policy_version"], "policy_hash": entry["policy_hash"],
+            "policy_version": entry.get("policy_version"), "policy_hash": entry.get("policy_hash"),
             "counter": entry["seq"], "at": entry["at"], "reason": entry["reason"], "detail": entry.get("detail", {}),
             "stopped": stopped(entry.get("mandate_id"), detail) if entry["reason"] in {"revoked", "cancelled_by_stop"} else None,
             "evidence": None, "state": None, "reverses": None, "undo": None, "undone_by": [], "audit": audit_by_action[aid],
@@ -131,7 +151,7 @@ def build_report(db, run_id) -> dict:
         if aid and aid not in existing:
             actions.append(refusal)
             existing.add(aid)
-    actions.sort(key=lambda row: (_json_value(row["at"]), row["counter"] or 0, row["action_id"]))
+    actions.sort(key=lambda row: _time_key(row, "at"))
     by_id = {row["action_id"]: row for row in actions if row["state"] is not None}
     stops = []
     for receipt in receipts:
@@ -145,7 +165,7 @@ def build_report(db, run_id) -> dict:
         if entry["kind"] == "stop" and not any(r["mandate_id"] == entry.get("mandate_id") and r["stop_seq"] == entry["seq"] for r in receipts):
             stops.append({"permission_id": entry.get("mandate_id"), "by": entry["principal"], "counter": entry["seq"],
                           "at": entry["at"], "receipt": None, "covered": [], "refusals": []})
-    stops.sort(key=lambda row: (_json_value(row["at"]), row["counter"] or 0))
+    stops.sort(key=lambda row: _time_key(row, "at"))
     return _json_value({
         "run": run, "permissions": forest, "actions": actions, "refusals": refusals, "stops": stops,
         "checks": check_records(run, permissions, effects, audit, receipts, policies),

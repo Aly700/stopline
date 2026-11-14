@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from stopline.report import build_report
+from stopline.report import build_report, render_report
 
 from .records import NOW, POLICY_HASH, RUN
 
@@ -89,3 +89,62 @@ def test_read_only_report_leaves_all_records_unchanged(demo):
     before = {name: list(demo[name].find({})) for name in names}
     build_report(demo, RUN)
     assert before == {name: list(demo[name].find({})) for name in names}
+
+
+def test_audit_order_keeps_whole_seconds_before_fractional_seconds(demo):
+    report = build_report(demo, RUN)
+    entries = [entry for entry in report["audit"] if entry["action_id"] == "rollback"]
+    assert [entry["kind"] for entry in entries] == ["allow", "claim", "outcome"]
+
+
+def test_missing_policy_fields_fail_without_breaking_reconstruction(demo):
+    demo.audit.update_one({"kind": "deny"}, {"$unset": {"policy_version": "", "policy_hash": ""}})
+    result = build_report(demo, RUN)
+    assert check(result, "audit_policies_exist")["passed"] is False
+    assert "shift-50" in check(result, "audit_policies_exist")["action_ids"]
+    assert "Policy missing" in render_report(result)
+
+
+def test_open_receipt_keeps_sent_action_unknown(demo):
+    demo.effects.update_one({"_id": "shift-25"}, {"$set": {"state": "sent", "evidence": None}})
+    demo.receipts.update_one({"_id": "receipt-1"}, {"$set": {"status": "open", "closed_at": None}})
+    result = build_report(demo, RUN)
+    assert all(item["passed"] for item in result["checks"])
+    assert next(row for row in result["actions"] if row["action_id"] == "shift-25")["outcome"] == "unknown"
+
+
+def test_stopped_ancestor_is_checked_even_if_the_frozen_chain_is_missing(demo):
+    demo.effects.update_one({"_id": "restart"}, {"$set": {"admitted_seq": 9, "chain": []}})
+    demo.mandates.update_one({"_id": "worker-1"}, {"$set": {"revoked_at_seq": None}})
+    demo.receipts.update_one({"_id": "receipt-1"}, {"$set": {"revoked": ["repair"]}})
+    assert "restart" in check(build_report(demo, RUN), "no_admission_after_stop")["action_ids"]
+
+
+def test_stop_check_also_checks_the_audits_admission_counter(demo):
+    demo.audit.update_one({"kind": "allow", "action_id": "restart"}, {"$set": {"seq": 9}})
+    assert "restart" in check(build_report(demo, RUN), "no_admission_after_stop")["action_ids"]
+
+
+def test_deleted_action_remains_visible_from_its_allow_entry(demo):
+    demo.effects.delete_one({"_id": "rollback"})
+    result = build_report(demo, RUN)
+    row = next(row for row in result["actions"] if row["action_id"] == "rollback")
+    assert row["decision"] == "allowed"
+    assert row["outcome"] == "unknown"
+    assert row["missing"] is True
+    assert row["chain"] == []  # The frozen chain disappeared with the action record.
+    assert check(result, "covered_actions_exist")["passed"] is False
+
+
+def test_independent_roots_can_use_the_same_counter_value(demo):
+    root = demo.mandates.find_one({"_id": "root"})
+    root.update(_id="other-root", root_id="other-root", seq=4)
+    demo.mandates.insert_one(root)
+    action = demo.effects.find_one({"_id": "rollback"})
+    action.update(_id="other-action", root_id="other-root", mandate_id="other-root", chain=["other-root"])
+    demo.effects.insert_one(action)
+    entry = demo.audit.find_one({"kind": "allow", "action_id": "rollback"})
+    del entry["_id"]
+    entry.update(action_id="other-action", root_id="other-root", mandate_id="other-root")
+    demo.audit.insert_one(entry)
+    assert all(item["passed"] for item in build_report(demo, RUN)["checks"])
