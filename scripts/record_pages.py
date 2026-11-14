@@ -124,6 +124,9 @@ class Recorder:
         raise CaptureError(f"Timed out waiting after key {key}; no recording was saved.")
 
     def capture(self):
+        # Starting a run has no ready_key; give the running instance a short
+        # fixed pause before the first key, just as for the other unhinted keys.
+        time.sleep(.75)
         initial = self.sample()
         # Keep each segment self-contained even when a key changes no records.
         data = {"version": 1, "recorded_at": datetime.now(timezone.utc).isoformat(),
