@@ -1,5 +1,5 @@
 """Atlas fixtures and bounded, explicit interleaving controls."""
-from collections import Counter
+from collections import Counter, defaultdict
 from contextlib import contextmanager
 import threading
 import uuid
@@ -16,27 +16,49 @@ class Commands(monitoring.CommandListener):
         self.local = threading.local()
         self.counts = Counter()
         self.lock = threading.Lock()
+        self.samples = defaultdict(list)
+        self.failures = []
+        self.pending = {}
 
     def started(self, event):
         label = getattr(self.local, "label", None)
         if label:
             with self.lock:
                 self.counts[label] += 1
+                self.local.invocation["round_trips"] += 1
+                if "lsid" in event.command:
+                    self.local.invocation["sessions"].add(bytes(event.command["lsid"]["id"]))
+                self.pending[event.request_id] = {
+                    "label": label, "command": event.command_name,
+                    "collection": event.command.get(event.command_name),
+                    "query": event.command.get("query"),
+                    "update": event.command.get("update"),
+                }
 
     def succeeded(self, event):
-        pass
+        with self.lock:
+            self.pending.pop(event.request_id, None)
 
     def failed(self, event):
-        pass
+        with self.lock:
+            command = self.pending.pop(event.request_id, None)
+            if command:
+                self.failures.append({**command, "code": event.failure.get("code")})
 
     @contextmanager
     def operation(self, label):
         old = getattr(self.local, "label", None)
+        previous_invocation = getattr(self.local, "invocation", None)
+        invocation = {"round_trips": 0, "sessions": set()}
         self.local.label = label
+        self.local.invocation = invocation
         try:
             yield
         finally:
             self.local.label = old
+            self.local.invocation = previous_invocation
+            with self.lock:
+                self.samples[label].append(invocation)
 
 
 commands = Commands()
@@ -65,9 +87,18 @@ def gate(database):
 @pytest.fixture(autouse=True)
 def round_trips(request):
     commands.counts.clear()
+    commands.samples.clear()
+    commands.failures.clear()
     yield
-    report = ", ".join(f"{name}={count}" for name, count in sorted(commands.counts.items()))
-    print(f"\nROUND TRIPS {request.node.name}: {report}")
+    report = ", ".join(f"{name}={[s['round_trips'] for s in samples]}"
+                       for name, samples in sorted(commands.samples.items()))
+    # The required command uses pytest's default capture; write through its reporter.
+    reporter = request.config.pluginmanager.getplugin("terminalreporter")
+    line = f"ROUND TRIPS {request.node.name}: {report}"
+    if reporter:
+        reporter.write_line(line)
+    else:
+        print(line)
 
 
 @pytest.fixture

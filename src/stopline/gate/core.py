@@ -2,13 +2,13 @@
 
 All authority reads are inside retried callbacks. The root's seq is the shared
 write conflict point for admission, delegation and stop. Outcome transactions
-also write its clock (without consuming a sequence) so receipt creation and
-closure cannot miss each other from separate snapshots.
+also increment a private outcome_version (without consuming an authority
+sequence) so receipt creation and closure cannot miss each other.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from datetime import timedelta
+from datetime import timedelta, timezone
 from typing import Any, Mapping
 from uuid import uuid4
 
@@ -17,9 +17,9 @@ from pymongo.errors import CollectionInvalid, DuplicateKeyError
 
 from stopline import db as storage
 from stopline.contract import (
-    Action, Admission, AuditKind, ChainView, Claim, EffectState, HandDown, Limits,
-    MAX_DEPTH, MAX_TREE_SIZE, MandateStatus, Mode, NotAuthorised, NotClaimed,
-    Reason, ReceiptRow, ReceiptView, TargetAdapter, TargetTimeout, TargetUnreachable,
+    Action, Admission, AuditKind, ChainView, Claim, Effect, EffectState, HandDown, Limits,
+    MAX_DEPTH, MAX_TREE_SIZE, Mandate, MandateStatus, Mode, NotAuthorised, NotClaimed,
+    Reason, Receipt, ReceiptRow, ReceiptView, TargetAdapter, TargetTimeout, TargetUnreachable,
     TERMINAL_STATES, Tool, args_hash, system_of,
 )
 from .schema import AUDIT_VALIDATOR, POLICY_HASH, POLICY_TEXT, POLICY_VERSION
@@ -63,6 +63,7 @@ class Gate:
             "effects": [[("root_id", 1), ("admitted_seq", 1)], [("chain", 1)],
                         [("mandate_id", 1), ("state", 1)], [("run_id", 1), ("admitted_at", 1)]],
             "audit": [[("action_id", 1), ("at", 1)], [("run_id", 1), ("at", 1)],
+                      [("root_id", 1), ("kind", 1), ("seq", 1)],
                       [("mandate_id", 1), ("kind", 1), ("at", 1)]],
             "receipts": [[("covered", 1), ("status", 1)], [("run_id", 1)]],
         }
@@ -73,7 +74,9 @@ class Gate:
         }}, upsert=True)
 
     def _now(self):
-        return self.db.command("hello")["localTime"]
+        now = self.db.command("hello")["localTime"]
+        # Command responses can bypass the collection's tz_aware codec option.
+        return now.replace(tzinfo=timezone.utc) if now.tzinfo is None else now
 
     @staticmethod
     def _valid_limits(limits):
@@ -92,7 +95,7 @@ class Gate:
 
     def grant_root(self, *, run_id: str, grantor: str, holder: str, tools: list[str],
                    targets: list[str], limits: Limits, ttl_seconds: int,
-                   mandate_id: str | None = None):
+                   mandate_id: str | None = None) -> Mandate:
         if not self._valid_limits(limits) or type(ttl_seconds) is not int or ttl_seconds <= 0:
             raise ValueError("invalid root limits or lifetime")
         now = self._now()
@@ -222,7 +225,13 @@ class Gate:
             existing = self.db.effects.find_one({"_id": action.action_id}, session=session)
             if existing is not None:
                 if not self._same_action(existing, action):
-                    raise Refused(Reason.SAME_ID_DIFFERENT_ARGS)
+                    # Even a collision refusal needs an ordered decision point so
+                    # receipts can distinguish it from an earlier, equal-clock denial.
+                    try:
+                        context = self._context(session, action.mandate_id)
+                    except Refused as error:
+                        context = error.context
+                    raise Refused(Reason.SAME_ID_DIFFERENT_ARGS, context)
                 return Admission(True, action.action_id, Reason.OK, existing["admitted_seq"], replayed=True)
             context = self._context(session, action.mandate_id)
             self._check_chain(context)
@@ -262,37 +271,44 @@ class Gate:
                 "args": action.args, "chain": chain}), session=session)
             return Admission(True, action.action_id, Reason.OK, root["seq"])
 
-        try:
-            result, attempts = storage.run_transaction(admission)
-            return replace(result, attempts=attempts)
-        except DuplicateKeyError:
-            # Two independent roots can race to use one caller-supplied action id.
-            existing = self.db.effects.find_one({"_id": action.action_id})
-            if existing is None:
-                raise
-            if self._same_action(existing, action):
-                return Admission(True, action.action_id, Reason.OK, existing["admitted_seq"],
-                                 attempts=attempts, replayed=True)
-            refusal = Refused(Reason.SAME_ID_DIFFERENT_ARGS)
-        except Refused as error:
-            refusal = error
+        for collision_attempt in range(2):
+            try:
+                result, _ = storage.run_transaction(admission)
+                return replace(result, attempts=attempts)
+            except DuplicateKeyError:
+                # Independent roots may race for one action id. Re-read the now
+                # committed effect through the normal replay/collision path once.
+                if collision_attempt:
+                    raise
+            except Refused as error:
+                refusal = error
+                break
         entry = self._deny(refusal, run_id=action.run_id, principal=action.principal,
                            mandate_id=action.mandate_id, action_id=action.action_id,
                            detail={"tool": action.tool, "target": action.target, "args": action.args})
         return Admission(False, action.action_id, refusal.reason, entry["seq"], refusal.detail, attempts)
 
     def claim(self, action_id: str, by: str) -> Claim:
-        effect = self.db.effects.find_one_and_update(
-            {"_id": action_id, "state": EffectState.ADMITTED},
-            [{"$set": {"state": EffectState.SENT, "claimed_by": {"$literal": by}, "sent_at": "$$NOW"}}],
-            return_document=ReturnDocument.AFTER)
-        if effect is not None:
+        def claiming(session):
+            effect = self.db.effects.find_one_and_update(
+                {"_id": action_id, "state": EffectState.ADMITTED},
+                [{"$set": {"state": EffectState.SENT, "claimed_by": {"$literal": by}, "sent_at": "$$NOW"}}],
+                return_document=ReturnDocument.AFTER, session=session)
+            if effect is None:
+                return None
             self.db.audit.insert_one(self._audit(
                 run_id=effect["run_id"], kind=AuditKind.CLAIM, principal=by,
                 mandate_id=effect["mandate_id"], root_id=effect["root_id"], action_id=action_id,
-                seq=effect["admitted_seq"], at=effect["sent_at"]))
+                seq=effect["admitted_seq"], at=effect["sent_at"]), session=session)
             return Claim(True, action_id, EffectState.SENT)
-        effect = self.db.effects.find_one({"_id": action_id})
+
+        claimed, _ = storage.run_transaction(claiming)
+        if claimed is not None:
+            return claimed
+        observed = list(self.db.effects.aggregate([
+            {"$match": {"_id": action_id}}, {"$set": {"_observed_at": "$$NOW"}},
+        ]))
+        effect = observed[0] if observed else None
         state = effect["state"] if effect else "missing"
         detail = {}
         reason = Reason.NOT_ADMITTED
@@ -301,18 +317,21 @@ class Gate:
             mandate = self.db.mandates.find_one({"_id": effect["mandate_id"]})
             if mandate:
                 detail = {key: mandate[key] for key in ("revoked_by", "revoked_at", "revoked_at_seq")}
+        source = effect or {}
+        self.db.audit.insert_one(self._audit(
+            run_id=source.get("run_id", ""), kind=AuditKind.CLAIM, principal=by,
+            mandate_id=source.get("mandate_id"), root_id=source.get("root_id"), action_id=action_id,
+            seq=source.get("admitted_seq"), at=source.get("_observed_at") or self._now(),
+            reason=reason, detail={"state": state, **detail}))
         return Claim(False, action_id, state, reason, detail)
 
-    def stop(self, *, mandate_id: str, by: str):
+    def stop(self, *, mandate_id: str, by: str) -> Receipt:
         identity = uuid4().hex
 
         def stopping(session):
-            try:
-                context = self._context(session, mandate_id)
-            except Refused as error:
-                raise NotAuthorised(str(error.reason)) from None
+            context = self._context(session, mandate_id)
             if by not in {m["holder"] for m in context.chain}:
-                raise NotAuthorised("caller holds no mandate in this chain")
+                raise Refused(Reason.NOT_AUTHORISED, context)
             root = context.root
             found = list(self.db.mandates.aggregate([
                 {"$match": {"_id": mandate_id}},
@@ -322,7 +341,7 @@ class Gate:
             ], session=session))[0]
             revoked = [mandate_id] + sorted(m["_id"] for m in found["below"])
             if len(revoked) > MAX_TREE_SIZE:
-                raise NotAuthorised("mandate tree exceeds the size cap")
+                raise Refused(Reason.TREE_TOO_LARGE, context)
             self.db.mandates.update_many({"_id": {"$in": revoked}, "status": MandateStatus.ACTIVE},
                 {"$set": {"status": MandateStatus.REVOKED, "revoked_by": by,
                           "revoked_at_seq": root["seq"], "revoked_at": root["clock"]}}, session=session)
@@ -344,10 +363,16 @@ class Gate:
                 detail={"receipt_id": identity, "revoked": revoked, "covered": receipt["covered"]}), session=session)
             return receipt
 
-        receipt, _ = storage.run_transaction(stopping)
-        return receipt
+        try:
+            receipt, _ = storage.run_transaction(stopping)
+            return receipt
+        except Refused as refusal:
+            mandate = refusal.context.mandate if refusal.context else {}
+            self._deny(refusal, run_id=mandate.get("run_id", ""), principal=by,
+                       mandate_id=mandate_id, detail={"operation": "stop"})
+            raise NotAuthorised(str(refusal.reason)) from None
 
-    def record_outcome(self, action_id: str, state: str, evidence: dict[str, Any]):
+    def record_outcome(self, action_id: str, state: str, evidence: dict[str, Any]) -> Effect:
         if state not in (EffectState.APPLIED, EffectState.REJECTED):
             raise ValueError("outcome must be applied or rejected")
         if (evidence.get("action_id") != action_id or not isinstance(evidence.get("system"), str)
@@ -366,9 +391,12 @@ class Gate:
                 raise ValueError("a terminal outcome cannot be changed")
             if effect["state"] != EffectState.SENT:
                 raise NotClaimed(action_id)
-            # Prevent snapshot write skew between outcomes and receipt creation/closure.
+            # A timestamp alone can be a no-op within one server millisecond, which
+            # takes no document lock. The private version guarantees a real write.
             root = self.db.mandates.find_one_and_update(
-                {"_id": effect["root_id"]}, [{"$set": {"clock": "$$NOW"}}],
+                {"_id": effect["root_id"]}, [{"$set": {
+                    "clock": "$$NOW", "outcome_version": {"$add": [{"$ifNull": ["$outcome_version", 0]}, 1]},
+                }}],
                 return_document=ReturnDocument.AFTER, session=session)
             if root is None:
                 raise NotClaimed("effect has no authority root")
@@ -395,7 +423,7 @@ class Gate:
         result, _ = storage.run_transaction(recording)
         return result
 
-    def reconcile(self, action_id: str, target: TargetAdapter):
+    def reconcile(self, action_id: str, target: TargetAdapter) -> Effect:
         effect = self.db.effects.find_one({"_id": action_id})
         if effect is None:
             raise KeyError(action_id)
@@ -441,8 +469,9 @@ class Gate:
         mandates = {m["_id"]: m for m in self.db.mandates.find({"root_id": receipt["root_id"]})}
         effects = list(self.db.effects.find({"_id": {"$in": receipt["covered"]}}).sort("admitted_seq", 1))
         refusals = list(self.db.audit.find({"run_id": receipt["run_id"], "kind": AuditKind.DENY,
+            "root_id": receipt["root_id"], "seq": {"$gt": receipt["stop_seq"]},
             "mandate_id": {"$in": receipt["revoked"]}, "action_id": {"$ne": None},
-            "at": {"$gte": receipt["stopped_at"]}}).sort([("at", 1), ("_id", 1)]))
+        }).sort([("seq", 1), ("at", 1), ("_id", 1)]))
 
         def chain(ids):
             return [{"mandate_id": identity, "holder": mandates[identity]["holder"],
