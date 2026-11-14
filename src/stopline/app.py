@@ -2,6 +2,7 @@
 
     python -m stopline                 real cluster target (kind cluster "stopline")
     python -m stopline --cluster mock  in-process cluster target
+    python -m stopline --voice         also speak the receipt aloud
 
 One process holds the gate, the sender, the stage and the page. The traffic
 router runs as its own process with its own store. Workers are separate
@@ -73,7 +74,7 @@ class ResettingStage:
             raise
 
 
-def build(cluster: str, port: int) -> Any:
+def build(cluster: str, port: int, voice: bool = False) -> Any:
     from .agents import build_stage
     from .gate import build_gate
     from .proof import summary
@@ -88,6 +89,16 @@ def build(cluster: str, port: int) -> Any:
     stage = ResettingStage(build_stage(database, gate, targets, sender, cluster=cluster), targets, reset_all)
     app = create_app(database, stage, targets, numbers=lambda: summary(database))
     app.include_router(sender_routes(sender))
+    try:
+        from .report import report_routes
+    except ImportError:
+        report_routes = None
+    if report_routes is not None:
+        app.include_router(report_routes(database))
+    if voice:
+        from . import voice as spoken
+
+        spoken.watch(database)
     return app
 
 
@@ -95,11 +106,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(prog="stopline")
     parser.add_argument("--cluster", choices=["kind", "mock"], default="kind")
     parser.add_argument("--port", type=int, default=PAGE_PORT)
+    parser.add_argument("--voice", action="store_true", help="speak the receipt when a run is stopped")
     args = parser.parse_args()
 
     os.environ["STOPLINE_SENDER_URL"] = f"http://127.0.0.1:{args.port}"  # worker processes inherit this
     start_router(Path(tempfile.gettempdir()) / "stopline-router.sqlite")
-    uvicorn.run(build(args.cluster, args.port), host="127.0.0.1", port=args.port, log_level="warning")
+    uvicorn.run(build(args.cluster, args.port, args.voice), host="127.0.0.1", port=args.port, log_level="warning")
 
 
 if __name__ == "__main__":
