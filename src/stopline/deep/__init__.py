@@ -29,6 +29,7 @@ def start_agent_run(db, gate, sender, targets, *, cluster, incident=None) -> Sta
     ready = Future()
 
     def execute():
+        trace = None
         try:
             from pymongo import timeout
             # Slow Atlas transactions must not block the page's command thread.
@@ -39,11 +40,11 @@ def start_agent_run(db, gate, sender, targets, *, cluster, incident=None) -> Sta
             from .agent import build_agent, invoke_agent
             from .tracing import trace_run
             with trace_run(tracing_key, run_id) as trace:
+                if trace:
+                    trace.bind(run)
                 model = config.make_model(selected)
                 graph = build_agent(run, model, incident=incident)
                 asyncio.run(invoke_agent(run, graph, trace_id=trace.id if trace else None))
-            if trace:
-                db.runs.update_one({'_id': run_id}, {'$set': {'trace_written': trace.written()}})
         except BaseException:
             run.halt('Stopped because the repair could not continue.')
             if not ready.done():
@@ -53,11 +54,13 @@ def start_agent_run(db, gate, sender, targets, *, cluster, incident=None) -> Sta
                 from pymongo import timeout
                 with timeout(2):
                     run.finish()
-                    if tracing_key:
+                    if tracing_key and trace is None:
                         db.runs.update_one({'_id': run_id, 'trace_written': {'$exists': False}},
                                            {'$set': {'trace_written': False}})
             except BaseException:
                 pass
+            if trace:
+                trace.complete(run)
 
     threading.Thread(target=execute, name=f'repair-{run_id}', daemon=True).start()
     pending = False

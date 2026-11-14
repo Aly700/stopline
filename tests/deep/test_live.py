@@ -21,3 +21,6 @@ def test_live_stop_after_two_actions():
     assert summary['applied'] == 2 and summary['refused'] == 1
     assert summary['model_calls'] > 0
     assert summary['seconds'] <= 120
+    from stopline.deep.config import read_setting
+    if read_setting('LANGSMITH_API_KEY'):
+        assert summary['trace_url_set'] and summary['trace_spans_verified']

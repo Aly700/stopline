@@ -105,11 +105,18 @@ def demonstrate():
                     break
                 time.sleep(0.1)
             success = counts['applied'] >= 2 and counts['stopped'] and counts['refused'] == 1
+            trace_spans_verified = False
+            if record.get('trace_project'):
+                from .tracing import verify_tool_spans
+                trace_spans_verified = verify_tool_spans(db, record)
+                success = success and bool(record.get('trace_url')) and trace_spans_verified
             print(json.dumps({
                 'model': record.get('planner', '').removeprefix('deep agent · '),
                 'model_calls': record.get('model_calls', 0), 'seconds': record.get('seconds'),
                 'applied': counts['applied'], 'refused': counts['refused'],
                 'trace_written': record.get('trace_written', False), 'ok': success,
+                'trace_url_set': bool(record.get('trace_url')),
+                'trace_spans_verified': trace_spans_verified,
             }), flush=True)
             if not success:
                 task = db.tasks.find_one({'_id': f'{result.run_id}:agent:repair'})

@@ -52,9 +52,25 @@ Only the Google provider was exercised against a live model in this change.
 `LANGSMITH_API_KEY` enables tracing for this run in project `stopline`, with
 the StopLine run id as its name and tag. Without it, tracing is disabled even
 if ambient tracing settings are enabled. Traces retain timing, tool names,
-and hierarchy; prompts, arguments, results, serialized clients, metadata,
-and raw errors are removed before transmission. Trace availability never
-grants permission to act. Tracing setup failure leaves the repair usable.
+hierarchy, and an allowlist of StopLine decision fields. Prompts, arguments,
+results, serialized clients, other metadata, and raw errors are removed before
+transmission. Trace availability never grants permission to act.
+
+Each repair-tool span carries `stopline_action_id`, `stopline_decision`,
+`stopline_reason`, and `stopline_counter`, plus `stopline_stopped_by` and
+`stopline_stopped_at` when a stop caused the refusal. Its tag is
+`stopline:allowed` or `stopline:refused`. A claim cancelled after admission
+updates that span to the refusal and retains the admission counter, matching
+the claim's audit entry. Counts include both the admission and that refusal.
+
+On completion, the root trace receives `stopline_stopped`,
+`stopline_actions_allowed`, `stopline_actions_refused`, and `stopline_receipt`
+feedback. The stopped flag mirrors the final run status; the receipt value
+is `closed`, `open`, or `none`. The run record saves `trace_id` and the
+`trace_url` returned by LangSmith. SDK calls have a five-second outer deadline
+and four-second transport timeouts; failures emit a fixed, secret-free note
+without changing the repair result. The demonstration also compares the
+stored audit entries with the tool spans returned by LangSmith.
 
 Offline checks:
 
@@ -77,5 +93,9 @@ References checked on 2026-11-14:
 - [Gemini 3.1 Flash-Lite](https://aistudio.google.com/docs/models/gemini-3.1-flash-lite)
 - [LangSmith tracing configuration](https://docs.langchain.com/langsmith/trace-with-langchain)
 - [LangSmith payload privacy](https://docs.langchain.com/langsmith/mask-inputs-outputs)
+- [Current-span metadata and tags](https://docs.langchain.com/langsmith/add-metadata-tags)
+- [Feedback API](https://reference.langchain.com/python/langsmith/client/Client/create_feedback)
+- [Root URL and trace retrieval](https://docs.langchain.com/langsmith/smithdb-sdk-migration-runs)
+- [Flush deadline](https://reference.langchain.com/python/langsmith/client/Client/flush)
 - [Claude models](https://platform.claude.com/docs/en/models/overview)
 - [OpenAI model](https://developers.openai.com/api/docs/models/gpt-6-luna)

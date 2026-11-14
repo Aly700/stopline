@@ -85,6 +85,8 @@ class Run:
         self.reason = ''
         self.last_notes = {}
         self.counters = {WORKER_ONE: 0, WORKER_TWO: 0}
+        self.trace = None
+        self.actions_allowed = self.actions_refused = 0
 
     def check(self):
         if self.halted.is_set() or self.finished.is_set():
@@ -149,11 +151,20 @@ class Run:
                 asked = f'Model asked to {"roll back" if tool == "rollback" else "restart"} {name}.'
             self.note(principal, asked, plan=steps, position=position)
             admission = self.gate.admit(action)
+            if admission.allowed:
+                self.actions_allowed += 1
+            else:
+                self.actions_refused += 1
+            if self.trace:
+                self.trace.decision(action, admission)
             if not admission.allowed:
                 return self.refuse(principal, admission)
             self.check()
             claimed = self.sender.claim(action.action_id)
             if not claimed.claimed:
+                self.actions_refused += 1
+                if self.trace:
+                    self.trace.decision(action, claimed, counter=admission.seq)
                 return self.refuse(principal, claimed)
             self.check()
             try:
