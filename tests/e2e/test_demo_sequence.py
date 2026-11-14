@@ -116,3 +116,14 @@ def test_stopline_run_refuses_after_the_stop_and_closes_the_receipt_on_evidence(
     assert state_of(system, shift_25) == EffectState.APPLIED
     assert system.targets["router"].state()["weights"]["region-b"] == 25
     until(lambda: workers_gone(system, run_id), "workers exited")
+
+    press(system.stage.undo, "undo")
+    until(lambda: system.targets["router"].state()["weights"]["region-b"] == 0, "region B back to 0%")
+    marks = {e["_id"]: e.get("undo") for e in system.db[EFFECTS].find({"run_id": run_id})}
+    assert marks[shift_25] == "undone"
+    assert marks[rollback] == "no_undo"
+    undo_action = system.db[EFFECTS].find_one({"run_id": run_id, "reverses": shift_25})
+    assert undo_action["principal"] == "person:operator" and undo_action["state"] == EffectState.APPLIED
+
+    rejected = press(system.stage.validation_rejection, "validation rejection")
+    assert rejected.detail.get("rejected") is True

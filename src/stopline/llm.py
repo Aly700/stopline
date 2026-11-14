@@ -76,6 +76,14 @@ def _api_key() -> str:
     return key.strip()
 
 
+def key_configured() -> bool:
+    """True when a model key is available, without revealing it."""
+    try:
+        return bool(_api_key())
+    except PlannerUnavailable:
+        return False
+
+
 def _object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     result = {}
     for name, value in pairs:

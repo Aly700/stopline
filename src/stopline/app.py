@@ -3,6 +3,7 @@
     python -m stopline                 real cluster target (kind cluster "stopline")
     python -m stopline --cluster mock  in-process cluster target
     python -m stopline --voice         also speak the receipt aloud
+    python -m stopline --model         a language model plans the repair
 
 One process holds the gate, the sender, the stage and the page. The traffic
 router runs as its own process with its own store. Workers are separate
@@ -74,7 +75,35 @@ class ResettingStage:
             raise
 
 
-def build(cluster: str, port: int, voice: bool = False) -> Any:
+RUNBOOK_INCIDENT = (
+    "checkout-api version v2 is failing; the last good version is v1. "
+    "Runbook for this incident: worker one rolls checkout-api back to v1, then restarts checkout-worker. "
+    "Worker two moves traffic to region B in two steps: 25 percent, then 50 percent."
+)
+
+
+def model_planner(database: Any) -> Any:
+    """A language model turns the incident and its runbook into steps. The check still decides what runs.
+
+    Returns None when no model key is configured. A slow or malformed answer falls back to the saved plan,
+    and the run records which one was used.
+    """
+    from . import llm
+    from .agents.planner import ModelPlanner, SavedPlanner
+
+    if not llm.key_configured():
+        return None
+    model = llm.ModelPlanner()
+
+    def call_model(*, run_id: str, mandate: Any, timeout_seconds: float) -> dict[str, Any]:
+        plan = model.plan(RUNBOOK_INCIDENT)
+        return {worker: [{key: step[key] for key in ("tool", "target", "args")} for step in steps]
+                for worker, steps in plan.steps.items()}
+
+    return ModelPlanner(call_model, SavedPlanner(database))
+
+
+def build(cluster: str, port: int, voice: bool = False, model: bool = False) -> Any:
     from .agents import build_stage
     from .gate import build_gate
     from .proof import summary
@@ -86,7 +115,11 @@ def build(cluster: str, port: int, voice: bool = False) -> Any:
     gate.setup()
     targets = build_targets(cluster)
     sender = build_sender(gate, targets)
-    stage = ResettingStage(build_stage(database, gate, targets, sender, cluster=cluster), targets, reset_all)
+    inner = build_stage(database, gate, targets, sender, cluster=cluster)
+    planner = model_planner(database) if model else None
+    if planner is not None:
+        inner.planner = planner
+    stage = ResettingStage(inner, targets, reset_all)
     app = create_app(database, stage, targets, numbers=lambda: summary(database))
     app.include_router(sender_routes(sender))
     if cluster == "mock":
@@ -110,11 +143,12 @@ def main() -> None:
     parser.add_argument("--cluster", choices=["kind", "mock"], default="kind")
     parser.add_argument("--port", type=int, default=PAGE_PORT)
     parser.add_argument("--voice", action="store_true", help="speak the receipt when a run is stopped")
+    parser.add_argument("--model", action="store_true", help="let a language model plan the repair (needs GEMINI_API_KEY)")
     args = parser.parse_args()
 
     os.environ["STOPLINE_SENDER_URL"] = f"http://127.0.0.1:{args.port}"  # worker processes inherit this
     start_router(Path(tempfile.gettempdir()) / "stopline-router.sqlite")
-    uvicorn.run(build(args.cluster, args.port, args.voice), host="127.0.0.1", port=args.port, log_level="warning")
+    uvicorn.run(build(args.cluster, args.port, args.voice, args.model), host="127.0.0.1", port=args.port, log_level="warning")
 
 
 if __name__ == "__main__":
