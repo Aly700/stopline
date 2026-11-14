@@ -95,7 +95,7 @@ def test_stopline_run_refuses_after_the_stop_and_closes_the_receipt_on_evidence(
     until(lambda: state_of(system, restart) == EffectState.CANCELLED, "restart cancelled by the stop")
     stopped = until(lambda: (task_of(system, run_id, WORKER_ONE).get("status") == TaskStatus.STOPPED
                              and task_of(system, run_id, WORKER_ONE)), "worker one refused")
-    assert "person:operator" in stopped["note"], "the refusal names who stopped it"
+    assert "Operator stopped" in stopped["note"], "the refusal names who stopped it"
 
     press(system.stage.resume_worker, "resume worker two")
     refusal = until(lambda: system.db[AUDIT].find_one({"action_id": shift_50, "kind": AuditKind.DENY}),
