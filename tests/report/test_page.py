@@ -2,6 +2,7 @@ import asyncio
 from html.parser import HTMLParser
 
 import httpx
+import pytest
 from fastapi import FastAPI
 
 from stopline.report import build_report, render_report, report_routes
@@ -34,6 +35,7 @@ def test_page_is_self_contained_and_uses_plain_words(demo):
     assert "25%" in text and "50%" in text
     assert "closed" in text
     assert 'href="#action-' in html  # undo links resolve inside the standalone page.
+    assert '</h1><p>Rebuilt from the stored records only. Nothing on this page comes from the running program\'s memory.</p>' in html
 
 
 def test_page_escapes_record_content(demo):
@@ -71,8 +73,28 @@ def test_routes_return_html_json_and_404(demo):
             data = await client.get(f"/api/report/{RUN}")
             assert data.status_code == 200
             assert data.json()["run"]["_id"] == RUN
-            assert len(data.json()["checks"]) == 6
+            assert len(data.json()["checks"]) == 7
             assert (await client.get("/report/missing")).status_code == 404
             assert (await client.get("/api/report/missing")).status_code == 404
 
     asyncio.run(requests())
+
+
+@pytest.mark.parametrize("state,fenced,expected", [
+    ("rejected", True, "stopped before it reached the target"),
+    ("rejected", False, "no change"),
+    ("applied", True, "completed"),
+])
+def test_fenced_action_outcome_keeps_its_target_evidence(demo, state, fenced, expected):
+    demo.effects.update_one({"_id": "shift-25"}, {"$set": {
+        "state": state, "evidence": {"action_id": "shift-25", "system": "router", "at_epoch": 42, "fenced": fenced},
+    }})
+    html = render_report(build_report(demo, RUN))
+    table = html.split("<tbody>", 1)[1].split("</tbody>", 1)[0]
+    row = next(row for row in table.split("</tr>") if 'class="action-id">· shift-25</span>' in row)
+    assert f'<span class="outcome ">{expected}</span>' in row
+    assert f'&quot;fenced&quot;: {str(fenced).lower()}' in row
+    if state == "rejected" and fenced:
+        assert "fence confirmed" in row
+    else:
+        assert "stopped before it reached the target" not in row

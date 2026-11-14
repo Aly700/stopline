@@ -33,7 +33,7 @@ def build_report(db, run_id) -> dict:
     """Reconstruct a run without importing the gate or contacting a target.
 
     Raises LookupError for a missing run. All returned values are JSON-ready.
-    The six checks concern consistency of the stored records; they cannot
+    The seven checks concern consistency of the stored records; they cannot
     establish that the records themselves have never been rewritten.
     """
     def read(session):

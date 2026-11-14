@@ -37,7 +37,7 @@ for a missing run and returns a JSON-ready dictionary:
 - `refusals`: every deny entry, including repeated requests for the same action.
 - `stops`: each stop's original receipt and fixed covered list, reconstructed
   outcomes, and later refusals kept separately. Missing receipts stay visible.
-- `checks`: six named results with `id`, `name`, `passed`, `applicable`,
+- `checks`: seven named results with `id`, `name`, `passed`, `applicable`,
   `violations` and the offending `action_ids`.
 - `policies`, `tasks`, `audit`: the stored policy definitions, saved work and
   chronological audit entries. Dates are UTC ISO strings; ObjectIds are strings.
@@ -46,17 +46,23 @@ Counter uniqueness means separate allocating operations under one root:
 hand-down, admission and stop. Copies of the same operation in an action,
 audit entry and receipt share a counter. Claims, outcomes, undo annotations
 and refusals observe existing counters. Different roots may use equal values.
-Both action records and allow entries are checked against stop counters.
+Both action records and original allow entries are checked against stop counters.
+The seventh check requires exactly one hand-down, allow or stop audit row for
+every counter from 1 through the root's stored counter. It names missing,
+repeated and out-of-range values. An allow row with `detail.replayed=true`
+counts as a decision but does not re-admit or duplicate the action.
 
 `applied` becomes completed, `sent` becomes unknown, `cancelled` becomes blocked,
 and `rejected` becomes `no effect` in JSON. The page calls the last outcome
-“no change” to keep its vocabulary plain. An admitted action that has not yet
+“no change” to keep its vocabulary plain. A rejected action with `evidence.fenced`
+reads “stopped before it reached the target” in the outcome column, with its
+fence evidence available alongside it. An admitted action that has not yet
 been sent is unknown, with that distinction stated in the evidence column.
 Closed receipts must contain only terminal states, so an unfinished admitted
 action fails that check too.
 
 Baseline runs explicitly say “No check before actions”; permission guarantees
-are marked not applicable. The six checks compare the saved records. They do
+are marked not applicable. The seven checks compare the saved records. They do
 not contact targets or prove that the entire database has never been rewritten.
 
 The HTML has inline styles, native expandable evidence and full record details,

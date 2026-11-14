@@ -4,7 +4,7 @@ import pytest
 
 from stopline.report import build_report, render_report
 
-from .records import NOW, POLICY_HASH, RUN
+from .records import NOW, POLICY_HASH, RUN, moment
 
 
 def check(report, name):
@@ -15,7 +15,7 @@ def test_reconstructs_demo_from_records_alone(demo):
     result = build_report(demo, RUN)
     assert result["run"]["mode"] == "stopline"
     assert all(item["passed"] for item in result["checks"])
-    assert len(result["checks"]) == 6
+    assert len(result["checks"]) == 7
     root = result["permissions"][0]
     assert root["holder"] == "person:operator"
     repair = root["children"][0]
@@ -138,13 +138,47 @@ def test_deleted_action_remains_visible_from_its_allow_entry(demo):
 
 def test_independent_roots_can_use_the_same_counter_value(demo):
     root = demo.mandates.find_one({"_id": "root"})
-    root.update(_id="other-root", root_id="other-root", seq=4)
+    root.update(_id="other-root", root_id="other-root", seq=1)
     demo.mandates.insert_one(root)
     action = demo.effects.find_one({"_id": "rollback"})
-    action.update(_id="other-action", root_id="other-root", mandate_id="other-root", chain=["other-root"])
+    action.update(_id="other-action", root_id="other-root", mandate_id="other-root", chain=["other-root"], admitted_seq=1)
     demo.effects.insert_one(action)
     entry = demo.audit.find_one({"kind": "allow", "action_id": "rollback"})
     del entry["_id"]
-    entry.update(action_id="other-action", root_id="other-root", mandate_id="other-root")
+    entry.update(action_id="other-action", root_id="other-root", mandate_id="other-root", seq=1)
     demo.audit.insert_one(entry)
     assert all(item["passed"] for item in build_report(demo, RUN)["checks"])
+
+
+@pytest.mark.parametrize("tamper,word", [("delete", "missing"), ("copy", "repeated")])
+def test_decision_counters_name_missing_or_repeated_values(demo, tamper, word):
+    entry = demo.audit.find_one({"kind": "allow", "action_id": "rollback"})
+    if tamper == "delete":
+        demo.audit.delete_one({"_id": entry["_id"]})
+    else:
+        del entry["_id"]
+        demo.audit.insert_one(entry)
+    result = check(build_report(demo, RUN), "decision_counters_complete")
+    assert result["passed"] is False
+    assert any(word in failure and "[4]" in failure and "root" in failure for failure in result["violations"])
+
+
+def test_replay_consumes_a_counter_without_readmitting_or_duplicating_action(demo):
+    entry = demo.audit.find_one({"kind": "allow", "action_id": "rollback"})
+    del entry["_id"]
+    entry.update(seq=9, at=moment(9), detail={**entry["detail"], "replayed": True})
+    demo.audit.insert_one(entry)
+    demo.mandates.update_one({"_id": "root"}, {"$set": {"seq": 9}})
+    result = build_report(demo, RUN)
+    assert len(result["checks"]) == 7
+    assert all(item["passed"] for item in result["checks"])
+    assert len(result["actions"]) == 5
+    assert [row["counter"] for row in result["actions"] if row["action_id"] == "rollback"] == [4]
+
+
+@pytest.mark.parametrize("counter,word,value", [(9, "missing", 9), (7, "outside", 8)])
+def test_decision_counters_use_the_roots_stored_counter(demo, counter, word, value):
+    demo.mandates.update_one({"_id": "root"}, {"$set": {"seq": counter}})
+    result = check(build_report(demo, RUN), "decision_counters_complete")
+    assert result["passed"] is False
+    assert any(word in failure and f"[{value}]" in failure for failure in result["violations"])

@@ -117,7 +117,9 @@ def _evidence(action):
         return {"cancelled": "Never sent; cancelled by stop.", None: "No request was sent.",
                 "admitted": "Allowed; not sent yet."}.get(action.get("state"), "Unknown; no target answer recorded.")
     summary = _h(evidence.get("system", "Target"))
-    if isinstance(evidence.get("weights"), dict):
+    if action["state"] == "rejected" and evidence.get("fenced"):
+        summary += " · fence confirmed"
+    elif isinstance(evidence.get("weights"), dict):
         summary += " · " + ", ".join(f"{_h(k)} {_h(v)}%" for k, v in evidence["weights"].items())
     elif action["state"] == "applied":
         summary += " · confirmed"
@@ -135,6 +137,8 @@ def _evidence(action):
 
 def _action(action):
     outcome = _h(action["outcome"])
+    if action.get("state") == "rejected" and (action.get("evidence") or {}).get("fenced"):
+        outcome = "stopped before it reached the target"
     policy = ("No check" if action["decision"] == "unchecked" else "Policy missing") if action["policy_version"] is None else (
         f'v{_h(action["policy_version"])} · {_h((action["policy_hash"] or "")[:12])}'
     )
@@ -175,6 +179,7 @@ def render_report(report) -> str:
              '<meta name="viewport" content="width=device-width,initial-scale=1">',
              '<title>StopLine · ' + _h(run["_id"]) + '</title><style>' + STYLE + '</style></head><body><main>',
              '<header><h1>StopLine · Run review</h1>',
+             "<p>Rebuilt from the stored records only. Nothing on this page comes from the running program's memory.</p>",
              f'<p><strong>{_h(run["mode"])}</strong> · {_h(run["_id"])} · {_h(run["cluster"])} cluster · {_h(run["status"])} · <strong>{_h(status)}</strong></p>',
              f'<p class="meta">{_h(report["notice"])} Created {_time(run["created_at"])}. Times are UTC.</p></header>',
              '<div class="top"><section><h2>Permissions</h2>',

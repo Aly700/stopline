@@ -1,6 +1,6 @@
 """Re-derive guarantees; never use a stored 'passed' flag."""
 
-from collections import defaultdict
+from collections import Counter, defaultdict
 
 from stopline.contract import TERMINAL_STATES
 
@@ -83,10 +83,12 @@ def check_records(run, permissions, actions, audit, receipts, policies):
             scopes.append((entry.get("root_id"), {entry.get("mandate_id")}, entry["seq"]))
     failures = []
     failed_ids = set()
+    # A replay is a decision, but it keeps the action's original admission counter.
     admissions = actions + [
         {"_id": entry["action_id"], "root_id": entry.get("root_id"), "mandate_id": entry.get("mandate_id"),
          "admitted_seq": entry.get("seq"), "chain": []}
         for entry in audit if entry["kind"] == "allow" and entry.get("action_id")
+        and not entry.get("detail", {}).get("replayed")
     ]
     for root, scope, stop_seq in scopes:
         while True:
@@ -119,4 +121,33 @@ def check_records(run, permissions, actions, audit, receipts, policies):
             label = aid or f'audit {entry["_id"]}'
             failures.append(([aid], f'{label}: policy version and hash do not match a stored policy.'))
     result("audit_policies_exist", "Every audit entry names a stored policy version and hash", failures, gated or bool(audit))
+
+    # Replays consume a counter too, even though the action keeps its original admission.
+    decisions = defaultdict(list)
+    for entry in audit:
+        if entry["kind"] in {"hand_down", "allow", "stop"}:
+            decisions[entry.get("root_id")].append(entry)
+    roots = {p["_id"]: p for p in permissions if p["_id"] == p["root_id"]}
+    failures = []
+    for root in sorted(roots.keys() | decisions.keys(), key=str):
+        maximum = roots.get(root, {}).get("seq")
+        if not isinstance(maximum, int) or isinstance(maximum, bool) or maximum < 0:
+            failures.append(([], f"Root {root}: missing or invalid stored counter."))
+            continue
+        counts = Counter()
+        for entry in decisions[root]:
+            seq = entry.get("seq")
+            if isinstance(seq, int) and not isinstance(seq, bool):
+                counts[seq] += 1
+            else:
+                failures.append(([entry.get("action_id")], f"Root {root}: invalid decision counter {seq}."))
+        expected = set(range(1, maximum + 1))
+        for label, values in (
+            ("missing", expected - counts.keys()),
+            ("repeated", {seq for seq, count in counts.items() if count > 1}),
+            (f"outside 1..{maximum}", counts.keys() - expected),
+        ):
+            if values:
+                failures.append(([], f"Root {root}: {label} counter values {sorted(values)}."))
+    result("decision_counters_complete", "Decision counters run from 1 with no gaps", failures, gated or bool(roots or decisions))
     return results
