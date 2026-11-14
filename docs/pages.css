@@ -1,0 +1,20 @@
+body {grid-template-rows:auto minmax(0,1fr)}
+.recording-bar {grid-column:1/-1; padding:8px 20px; border-bottom:1px solid var(--hairline); background:var(--raised); color:var(--muted); font-size:11px; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:6px 20px}
+.recording-bar p {color:var(--text)}
+.recording-bar nav {display:flex; align-items:center; flex-wrap:wrap; gap:6px 16px}
+.recording-bar a {text-decoration:underline; text-underline-offset:3px}
+.recording-bar a:hover {color:var(--text)}
+#autoplay {padding:4px 10px; border-color:#436394; color:var(--accent); background:var(--accent-soft); font-size:11px; min-width:76px}
+#autoplay[aria-pressed=true] {color:var(--text)}
+@media (min-width:1100px) and (max-height:950px) {
+  body:not(.stage) .workspace {padding:12px 20px}
+  body:not(.stage) .trace-row {padding:6px 0; min-height:34px}
+  body:not(.stage) .receipt {margin-top:16px}
+  body:not(.stage) .receipt-row {padding:4px 0}
+}
+@media (max-width:760px) {
+  .recording-bar {padding:10px 16px; font-size:11px}
+  .recording-bar nav {gap:8px 14px}
+  .receipt:not(.no-receipt) {display:block}
+  .receipt-row:nth-child(even) {border-right:0; padding-right:0}
+}
