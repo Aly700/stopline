@@ -221,3 +221,262 @@ def test_never_writes_reserved_database(voyage_server):
     assert result['ok'] is False
     assert not voyage_server.calls
     assert db['audit_search'].writes == 0
+
+
+class AtlasCollection(Collection):
+    def __init__(self, rows=()):
+        super().__init__(rows)
+        self.indexes = []
+        self.creates = []
+        self.pipelines = []
+        self.empty_queries = 0
+        self.stale_queries = 0
+        self.ready = True
+
+    def create_index(self, key):
+        return key
+
+    def list_search_indexes(self, name=None):
+        return copy.deepcopy(self.indexes)
+
+    def create_search_index(self, model):
+        self.creates.append(model.document)
+        self.indexes = [dict(name=model.document['name'], queryable=self.ready,
+                             latestDefinition=model.document['definition'])]
+        return model.document['name']
+
+    def aggregate(self, pipeline, **kwargs):
+        self.pipelines.append(pipeline)
+        if self.empty_queries:
+            self.empty_queries -= 1
+            return []
+        rows = self.find(pipeline[0]['$vectorSearch']['filter'])
+        if self.stale_queries:
+            self.stale_queries -= 1
+            rows = rows[:1]
+        return [dict(row, score=0.9 if row['kind'] == 'deny' else 0.7) for row in rows]
+
+
+def test_atlas_index_and_filter(voyage_server):
+    db = DB()
+    atlas = db.collections['audit_search'] = AtlasCollection()
+    service = AuditSearch(db, voyage=voyage_server.client)
+    assert service.ensure_index(wait_seconds=0.1)
+    assert service.ensure_index(wait_seconds=0.1)
+    assert len(atlas.creates) == 1
+    definition = atlas.creates[0]
+    assert definition['type'] == 'vectorSearch'
+    assert definition['definition']['fields'] == [
+        dict(type='vector', path='embedding', numDimensions=DIMENSIONS, similarity='cosine'),
+        dict(type='filter', path='run_id'),
+    ]
+    result = service.ask('run-1', 'what was refused')
+    assert result['ok'] and result['engine'] == 'atlas vector search'
+    stage = atlas.pipelines[0][0]['$vectorSearch']
+    assert stage['filter'] == {'run_id': 'run-1'}
+    assert stage['path'] == 'embedding'
+    assert stage['numCandidates'] >= 20 * stage['limit']
+    assert len(stage['queryVector']) == DIMENSIONS
+
+
+def test_atlas_waits_for_new_entries_not_just_any_result(voyage_server):
+    db = DB([entry('allow', _id='old'), entry(_id='new')])
+    atlas = db.collections['audit_search'] = AtlasCollection()
+    atlas.stale_queries = 2
+    service = AuditSearch(db, voyage=voyage_server.client)
+    result = service.ask('run-1', 'what was refused')
+    assert result['engine'] == 'atlas vector search'
+    assert len(atlas.pipelines) == 3
+    assert result['rows'][0]['audit_id'] == 'new'
+    assert len(voyage_server.calls) == 2
+
+
+def test_empty_atlas_is_bounded_and_falls_back(voyage_server, monkeypatch):
+    db = DB()
+    atlas = db.collections['audit_search'] = AtlasCollection()
+    atlas.empty_queries = 1000
+    monkeypatch.setattr('stopline.search.core.INGEST_SECONDS', 0.08)
+    service = AuditSearch(db, voyage=voyage_server.client)
+    started = time.monotonic()
+    result = service.ask('run-1', 'what was refused')
+    assert result['ok'] and result['engine'] == 'local ranking'
+    assert 1 < len(atlas.pipelines) < 10
+    assert time.monotonic() - started < 12
+
+
+def test_index_creation_timeout_does_not_raise(voyage_server):
+    db = DB()
+    atlas = db.collections['audit_search'] = AtlasCollection()
+    atlas.ready = False
+    service = AuditSearch(db, voyage=voyage_server.client)
+    started = time.monotonic()
+    assert service.ensure_index(wait_seconds=0.05) is False
+    assert time.monotonic() - started < 1
+    assert service.index_message
+
+
+def test_local_results_never_cross_runs(voyage_server):
+    db = DB([entry(), entry(_id='other', run_id='run-2')])
+    service = AuditSearch(db, voyage=voyage_server.client)
+    service.index_run('run-2')
+    result = service.ask('run-1', 'what was refused')
+    assert [row['audit_id'] for row in result['rows']] == ['audit-1']
+
+
+def test_key_file_and_environment_precedence(voyage_server, tmp_path, monkeypatch):
+    from stopline.search.voyage import load_key
+    path = tmp_path / 'credential'
+    path.write_text(' file-value\n')
+    monkeypatch.setattr('stopline.search.voyage.KEY_FILE', path)
+    assert load_key() == SECRET
+    monkeypatch.delenv('VOYAGE_API_KEY')
+    assert load_key() == 'file-value'
+
+
+def test_watch_reconnects_and_batches_only_receipt_transitions(monkeypatch):
+    from stopline.search import watch
+    db = DB()
+    events = [
+        {'_id': {'token': 1}, 'operationType': 'insert',
+         'fullDocument': {'_id': 'receipt', 'run_id': 'run-1', 'status': 'open'}},
+        {'_id': {'token': 2}, 'operationType': 'update',
+         'fullDocument': {'_id': 'receipt', 'run_id': 'run-1', 'status': 'closed'},
+         'updateDescription': {'updatedFields': {'status': 'closed'}}},
+    ]
+
+    class Stream:
+        def __init__(self, rows):
+            self.rows = iter(rows)
+            self.resume_token = None
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+        def try_next(self):
+            event = next(self.rows, None)
+            if isinstance(event, Exception):
+                raise event
+            if event:
+                self.resume_token = event['_id']
+            else:
+                time.sleep(0.005)
+            return event
+
+    calls = []
+    opens = []
+
+    def open_stream(*args, **kwargs):
+        opens.append(kwargs)
+        return Stream([events[0], RuntimeError(SECRET)] if len(opens) == 1 else events)
+
+    db['receipts'].watch = open_stream
+    service = SimpleNamespace(index_run=lambda run_id: calls.append(run_id), ensure_index=lambda: True)
+    monkeypatch.setattr('stopline.search.watcher.RECONNECT_SECONDS', 0.01)
+    worker = watch(db, search=service)
+    try:
+        deadline = time.monotonic() + 2
+        while len(calls) < 2 and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert calls == ['run-1', 'run-1']
+        assert opens[1]['resume_after'] == {'token': 1}
+        assert SECRET not in worker.message
+    finally:
+        worker.stop()
+        worker.join(timeout=2)
+    assert not worker.is_alive()
+
+
+def test_watch_failure_never_escapes_or_retries_the_same_receipt(monkeypatch, caplog):
+    from stopline.search.watcher import ReceiptWatcher
+    db = DB()
+    calls = []
+
+    def failing(run):
+        calls.append(run)
+        raise RuntimeError(SECRET)
+
+    worker = ReceiptWatcher(db, SimpleNamespace(index_run=failing))
+    event = dict(operationType='insert', fullDocument=dict(run_id='run-1', status='open'))
+    worker.process(event)
+    worker.process(event)
+    assert calls == ['run-1']
+    assert SECRET not in worker.message + caplog.text
+
+
+def test_cli_prints_rows_and_uses_database_factory(voyage_server, monkeypatch, capsys):
+    from stopline.search import __main__ as command
+    db = DB()
+    service = AuditSearch(db, voyage=voyage_server.client)
+    selected = []
+
+    def database(name):
+        selected.append(name)
+        return db
+
+    monkeypatch.setattr(command.storage, 'database', database)
+    monkeypatch.setattr(command, 'AuditSearch', lambda chosen: service)
+    assert command.main(['what was refused', '--run', 'run-1', '--database', 'example']) == 0
+    output = capsys.readouterr().out
+    assert selected == ['example']
+    assert 'Search: local ranking' in output
+    assert 'Worker two asked to shift 50% to region B' in output
+    assert '[audit audit-1]' in output
+
+
+def test_cli_sanitizes_database_failure(monkeypatch, capsys):
+    from stopline.search import __main__ as command
+
+    def broken(name):
+        raise RuntimeError(SECRET)
+
+    monkeypatch.setattr(command.storage, 'database', broken)
+    assert command.main(['anything']) == 0
+    assert capsys.readouterr().out == 'Audit search is unavailable; check the database connection.\n'
+
+
+def test_query_failure_uses_one_request_after_indexing(voyage_server):
+    service = AuditSearch(DB(), voyage=voyage_server.client)
+    service.index_run('run-1')
+    voyage_server.status = 429
+    result = service.ask('run-1', 'what was refused')
+    assert not result['ok']
+    assert result['message'] == 'Voyage is rate limited; try again in 20 seconds'
+    assert [call['input_type'] for call in voyage_server.calls] == ['document', 'query']
+
+
+def test_real_default_timeout_returns_within_twelve_seconds(voyage_server):
+    voyage_server.delay = 11
+    service = AuditSearch(DB(), voyage=voyage_server.client)
+    started = time.monotonic()
+    result = service.ask('run-1', 'what was refused')
+    elapsed = time.monotonic() - started
+    assert not result['ok']
+    assert result['message'] == 'Voyage took too long; try again.'
+    assert 9 <= elapsed < 12
+    assert len(voyage_server.calls) == 1
+
+
+def test_route_contains_unexpected_errors(monkeypatch):
+    def broken(*args):
+        raise RuntimeError(SECRET)
+
+    app = FastAPI()
+    app.include_router(search_routes(DB(), search=SimpleNamespace(ask=broken)))
+    with TestClient(app) as client:
+        response = client.get('/api/ask', params={'q': 'anything'})
+    assert response.status_code == 200
+    assert response.json() == dict(ok=False, engine='local ranking', rows=[],
+                                   message='Audit search is unavailable; try again.')
+
+
+def test_concurrent_indexing_uses_one_document_batch(voyage_server):
+    from concurrent.futures import ThreadPoolExecutor
+    voyage_server.delay = 0.05
+    service = AuditSearch(DB(), voyage=voyage_server.client)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(service.index_run, ['run-1', 'run-1']))
+    assert sorted(results) == [0, 1]
+    assert len(voyage_server.calls) == 1

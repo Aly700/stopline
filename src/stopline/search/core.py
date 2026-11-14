@@ -4,12 +4,14 @@ import threading
 import time
 
 import pymongo
+from pymongo.operations import SearchIndexModel
 
 from .sentences import sentence_for
 from .voyage import SearchError, VoyageClient
 
 COLLECTION = 'audit_search'
 ASK_SECONDS = 11.0
+INGEST_SECONDS = 5.0
 
 
 def failure(message):
@@ -49,6 +51,45 @@ class AuditSearch:
         self.model = self.voyage.model
         self.dimensions = self.voyage.dimensions
         self._index_lock = threading.Lock()
+        self._pending = set()
+        self.index_name = f'audit_{self.model.replace("-", "_")}_{self.dimensions}'
+        self.index_message = ''
+
+    def ensure_index(self, *, wait_seconds=90):
+        """Provision separately from questions; wait no longer than 90 seconds."""
+        deadline = time.monotonic() + min(90, max(0.001, wait_seconds))
+        definition = {'fields': [
+            dict(type='vector', path='embedding', numDimensions=self.dimensions, similarity='cosine'),
+            dict(type='filter', path='run_id'),
+        ]}
+        try:
+            self._writable()
+            with pymongo.timeout(min(5, remaining(deadline))):
+                # Also creates the collection when provisioning precedes indexing.
+                self.collection.create_index('run_id')
+                indexes = list(self.collection.list_search_indexes(self.index_name))
+                if not indexes:
+                    self.collection.create_search_index(model=SearchIndexModel(
+                        definition=definition, name=self.index_name, type='vectorSearch'))
+            while time.monotonic() < deadline:
+                with pymongo.timeout(min(5, remaining(deadline))):
+                    indexes = list(self.collection.list_search_indexes(self.index_name))
+                for index in indexes:
+                    if index.get('status') == 'FAILED':
+                        raise SearchError('Atlas Vector Search could not build the index; using local ranking.')
+                    if index.get('queryable') is True:
+                        actual = index.get('latestDefinition', definition)
+                        if actual != definition:
+                            raise SearchError('Atlas Vector Search has a different index definition; using local ranking.')
+                        self.index_message = ''
+                        return True
+                time.sleep(min(0.5, max(0, deadline - time.monotonic())))
+            self.index_message = 'Atlas Vector Search is still building the index; using local ranking.'
+        except SearchError as error:
+            self.index_message = str(error)
+        except Exception:
+            self.index_message = 'Atlas Vector Search is unavailable; using local ranking.'
+        return False
 
     def _writable(self):
         if self.db.name == 'stopline':
@@ -85,6 +126,7 @@ class AuditSearch:
                     document.update(text=text, embedding=vector, model=self.model)
                     result = self.collection.update_one({'_id': entry['_id']}, {'$setOnInsert': document}, upsert=True)
                     added += result.upserted_id is not None
+                    self._pending.add(run_id)
                 return added
         except SearchError:
             raise
@@ -96,7 +138,8 @@ class AuditSearch:
     def _rank(self, run_id, vector, k, added, deadline):
         rows = []
         with pymongo.timeout(remaining(deadline)):
-            for document in self.collection.find({'run_id': run_id, 'model': self.model}):
+            documents = list(self.collection.find({'run_id': run_id, 'model': self.model}))
+            for document in documents:
                 remaining(deadline)
                 score = cosine(vector, document.get('embedding', []))
                 if score is not None:
@@ -104,8 +147,32 @@ class AuditSearch:
         rows.sort(key=lambda row: (-row['score'], row['audit_id']))
         if not rows:
             return failure('No searchable audit entries are stored for this run.')
+        stored = {document['_id']: document for document in documents}
+        # Asking for the whole small run lets us detect a partially updated index.
+        limit = max(k, len(stored))
+        pipeline = [{'$vectorSearch': dict(
+            index=self.index_name, path='embedding', queryVector=vector,
+            filter={'run_id': run_id}, numCandidates=min(10000, max(100, 20 * limit)), limit=limit,
+        )}, {'$project': {'_id': 1, 'score': {'$meta': 'vectorSearchScore'}}}]
+        poll_until = min(deadline - 0.05, time.monotonic() + INGEST_SECONDS)
+        while time.monotonic() < deadline - 0.05:
+            try:
+                with pymongo.timeout(min(1, remaining(deadline) - 0.01)):
+                    matches = list(self.collection.aggregate(pipeline, maxTimeMS=1000))
+                found = {row['_id'] for row in matches}
+                if stored.keys() <= found:
+                    ranked = [result_row(stored[row['_id']], row['score'])
+                              for row in matches if row['_id'] in stored]
+                    ranked.sort(key=lambda row: (-row['score'], row['audit_id']))
+                    self._pending.discard(run_id)
+                    return dict(ok=True, engine='atlas vector search', rows=ranked[:k], message='')
+            except Exception:
+                break
+            if (not added and run_id not in self._pending) or time.monotonic() >= poll_until:
+                break
+            time.sleep(min(0.05, max(0, poll_until - time.monotonic())))
         return dict(ok=True, engine='local ranking', rows=rows[:k],
-                    message='Atlas Vector Search is unavailable; using local ranking.')
+                    message='Atlas Vector Search is unavailable or still catching up; using local ranking.')
 
     def ask(self, run_id, question, k=5):
         """Return only stored entries, with bounded I/O and no escaping failures."""
