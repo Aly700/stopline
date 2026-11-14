@@ -2,8 +2,11 @@
 import os
 from pathlib import Path
 import time
+import threading
 
-from bson.json_util import dumps, loads
+from stopline.contract import StageResult
+
+from bson.json_util import JSONOptions, dumps, loads
 
 from stopline.view import create_app
 from .fakes import FakeDB, ScriptedStage, Target
@@ -22,13 +25,17 @@ class SavedStage(ScriptedStage):
         return result
 
     def press_stop(self):
+        if getattr(self, 'defer_stop', False):
+            self.defer_stop = False
+            threading.Timer(.6, lambda: super(SavedStage, self).press_stop()).start()
+            return StageResult(True, 'Stop requested.', pending=True, run_id=self.run['_id'])
         time.sleep(.35)  # Give the browser an observable pending interval.
         return super().press_stop()
 
 
 stage = SavedStage(db, targets)
 if store and store.exists():
-    saved = loads(store.read_text())
+    saved = loads(store.read_text(), json_options=JSONOptions(tz_aware=True))
     db.records = saved['records']
     stage.serial = saved['serial']
     stage.run = db.records['runs'][-1] if db.records['runs'] else None
@@ -37,3 +44,9 @@ if store and store.exists():
 
 app = create_app(db, stage, targets, numbers=lambda: [
     '40 schedules measured', 'Stop flag: 12 actions after stop', 'StopLine: 0 admitted after stop'])
+
+
+@app.post('/fixture/defer-stop')
+def defer_stop():
+    stage.defer_stop = True
+    return {'ok': True}

@@ -87,8 +87,12 @@ def create_app(db, stage, targets, numbers=None):
             while not await request.is_disconnected():
                 if feed.revision != last:
                     last = feed.revision
-                    data = json.dumps({'revision': last, 'connected': feed.connected})
-                    yield f'event: change\ndata: {data}\n\n'
+                    payload = {'revision': last, 'connected': feed.connected}
+                    try:
+                        payload['state'] = await run_in_threadpool(read_state, db)
+                    except Exception:
+                        payload['pending'] = True
+                    yield f'event: change\ndata: {json.dumps(payload)}\n\n'
                 await asyncio.sleep(.15)
                 heartbeat += 1
                 if heartbeat >= 65:
@@ -118,7 +122,10 @@ def create_app(db, stage, targets, numbers=None):
 
     @app.get('/api/chain/{action_id}')
     def chain(action_id: str):
-        result = read_chain(db, action_id)
+        try:
+            result = read_chain(db, action_id)
+        except Exception:
+            return JSONResponse({'pending': True, 'message': 'Evidence pending.'}, status_code=503)
         if result is None:
             raise HTTPException(404, 'Action not found.')
         return result

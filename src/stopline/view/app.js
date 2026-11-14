@@ -19,6 +19,7 @@ const person = (name) => names[name] || name || 'Unknown';
 const clock = (value) => value ? new Date(value).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false}) : '—';
 function title(row) {
   const target = (row.target || '').split('/').pop();
+  if (row.reverses && row.tool === 'rollback') return `Undo rollback of ${target}`;
   if (row.tool === 'rollback') return `Roll back ${target}`;
   if (row.tool === 'restart') return `Restart ${target}`;
   if (row.tool === 'shift_traffic') return `Shift ${row.args?.percent ?? '?'}% to region B`;
@@ -63,7 +64,11 @@ function render(state) {
   $('mode').textContent = ({flag:'STOP FLAG', stopline:'STOPLINE', fixed:'FIXED RULES'})[run?.mode] || 'READY';
   $('run-label').textContent = run ? (run.mode === 'stopline' ? 'Permission checked before every action' : 'Permission checked before the stop') : 'Press 1 to begin';
   $('context').textContent = `${run?.cluster === 'mock' ? 'Mock cluster · ' : ''}timing controlled · router built for this test`;
-  $('permission-note').textContent = run?.mode === 'stopline' ? 'Permission: Operator → Repair agent → two workers' : 'A repair agent. Two workers. One stop.';
+  const repair = state.permissions.find(permission => permission.holder === 'agent:repair');
+  const workers = state.permissions.filter(permission => ['agent:worker-1', 'agent:worker-2'].includes(permission.holder));
+  $('permission-note').textContent = run?.mode === 'stopline'
+    ? (repair ? `Permission ${repair.status === 'revoked' ? 'stopped' : 'granted'}: Operator → Repair agent → ${workers.length} workers` : 'Permission pending')
+    : 'A repair agent. Two workers. One stop.';
   $('workers').replaceChildren(...state.workers.map(worker => make('span', `${person(worker.principal)}: ${{killed:'crashed', held:'held by test schedule', stopped:'stopped', done:'completed', running:'running'}[worker.status] || worker.status}`, `worker-${worker.status}`)));
   const rows = [];
   let stopped = false;
@@ -189,9 +194,9 @@ async function showChain(actionId) {
     nodes.push(list, make('h3', 'Policy'), make('p', data.policy ? `Version ${data.policy._id} · ${data.policy.text}` : 'No policy recorded for this action.'));
     nodes.push(make('h3', 'The decision'));
     const decisions = data.audit.filter(entry => ['allow', 'deny', 'claim', 'outcome', 'undo'].includes(entry.kind));
-    if (!decisions.length) nodes.push(make('p', data.effect ? `Recorded as ${data.effect.state === 'applied' ? 'completed' : (data.effect.state === 'sent' ? 'unknown' : data.effect.state === 'cancelled' ? 'blocked' : 'waiting')}.` : 'No decision recorded.'));
+    if (!decisions.length) nodes.push(make('p', data.effect ? `Recorded as ${data.effect.state === 'applied' ? 'completed' : (data.effect.state === 'sent' ? 'unknown' : data.effect.state === 'cancelled' ? 'blocked' : data.effect.state === 'rejected' ? 'no effect' : 'waiting')}.` : 'No decision recorded.'));
     for (const entry of decisions) nodes.push(make('p', `${clock(entry.at)} · ${{allow:'Permission granted', deny:'Refused', claim:'Sent', outcome:'Outcome recorded', undo:'Undo requested'}[entry.kind]}${entry.kind === 'deny' ? ' · ' + refusalText(entry) : ''}`));
-    nodes.push(make('h3', 'The target’s evidence'), make('pre', data.effect?.evidence ? JSON.stringify(data.effect.evidence, null, 2) : 'Unknown — no target evidence recorded.'));
+    nodes.push(make('h3', 'The target’s evidence'), make('pre', data.effect?.evidence ? JSON.stringify(data.effect.evidence, null, 2) : (data.effect?.state === 'cancelled' || !data.effect ? 'Blocked before sending. No target evidence is needed.' : data.effect?.state === 'admitted' ? 'Waiting. Nothing sent yet.' : 'Unknown — no target evidence recorded.')));
     $('chain-content').replaceChildren(...nodes);
   } catch (_) { $('chain-content').replaceChildren(make('p', 'Evidence pending. Close and try again.', 'unknown')); }
 }
@@ -206,7 +211,16 @@ document.querySelectorAll('[data-key]').forEach(button => button.addEventListene
 document.querySelectorAll('[data-close]').forEach(button => button.addEventListener('click', () => $(button.dataset.close).close()));
 const events = new EventSource('/api/events');
 events.addEventListener('rebuild', refresh);
-events.addEventListener('change', () => { refresh(); pollTargets(); });
+events.addEventListener('change', event => {
+  const payload = JSON.parse(event.data);
+  if (payload.state) {
+    render(payload.state);
+    $('connection').textContent = payload.connected ? 'Live' : 'Updates reconnecting';
+    pollTargets();
+  } else {
+    $('connection').textContent = 'Atlas pending · keeping confirmed state';
+  }
+});
 events.onerror = () => { $('connection').textContent = 'Reconnecting · keeping confirmed state'; };
 refresh(); pollTargets();
 setInterval(pollTargets, 1500);

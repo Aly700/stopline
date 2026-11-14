@@ -76,7 +76,7 @@ def read_state(db):
     receipts = sorted(records['receipts'], key=lambda row: row['stop_seq'])
     receipt = next((row for row in receipts if row['_id'] == run.get('receipt_id')), receipts[-1] if receipts else None)
     stop = (dict(seq=receipt['stop_seq'], at=receipt['stopped_at'], by=receipt['stopped_by']) if receipt else
-            dict(seq=None, at=run['stop_at'], by='person:operator') if run.get('stop_at') else None)
+            dict(seq=None, at=run['stop_at'], by='person:operator') if run['mode'] != 'stopline' and run.get('stop_at') else None)
     for row in rows:
         if run['mode'] == 'stopline':
             row['after_stop'] = bool(stop and (row.get('seq') or 0) >= (stop['seq'] or 0))

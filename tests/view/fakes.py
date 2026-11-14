@@ -51,6 +51,10 @@ class Stream:
         self.db, self.closed = db, False
         self.resume_token = None
 
+    @property
+    def alive(self):
+        return not self.closed
+
     def __enter__(self):
         self.db.opened.set()
         return self
@@ -169,6 +173,9 @@ class ScriptedStage:
             if task['run_id'] == self.run['_id'] and task['status'] != 'killed':
                 task.update(status='stopped', held_at=None)
         if self.run['mode'] == 'stopline':
+            for permission in self.db.records['mandates']:
+                if permission['run_id'] == self.run['_id'] and permission['_id'] != 'root':
+                    permission['status'] = 'revoked'
             for effect in self.db.records['effects']:
                 if effect['run_id'] == self.run['_id'] and effect['state'] == 'admitted':
                     effect['state'] = 'cancelled'
@@ -205,9 +212,17 @@ class ScriptedStage:
 
     def undo(self):
         self.targets['router'].data['weights'] = {'region-a': 100, 'region-b': 0}
-        for effect in self.db.records['effects']:
-            if effect['run_id'] == self.run['_id']:
-                effect['undo'] = 'no_undo' if effect['tool'] == 'restart' else 'undone'
+        originals = [effect for effect in self.db.records['effects'] if effect['run_id'] == self.run['_id'] and not effect.get('reverses')]
+        for index, effect in enumerate(originals):
+            effect['undo'] = 'no_undo' if effect['tool'] == 'restart' else 'undone'
+            if effect['state'] == 'applied' and effect['tool'] != 'restart':
+                inverse = deepcopy(effect)
+                inverse.update(_id=effect['_id'] + '-undo', principal='person:operator', mandate_id='root', chain=['root'],
+                    reverses=effect['_id'], undo=None, admitted_seq=10 + index, admitted_at=NOW + timedelta(seconds=30 + index))
+                if inverse['tool'] == 'shift_traffic':
+                    inverse['args'] = {'percent': 0}
+                inverse['evidence']['action_id'] = inverse['_id']
+                self.db.records['effects'].append(inverse)
         return self.result('undo', 'Traffic shift undone under the operator’s permission.')
 
     def validation_rejection(self):

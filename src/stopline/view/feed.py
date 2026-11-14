@@ -31,6 +31,8 @@ class ChangeFeed:
                     self.revision += 1  # Rebuild on opening, even when the resume token expired.
                     while not self.stopping.is_set():
                         change = stream.try_next()
+                        if not stream.alive:
+                            raise RuntimeError('change stream ended')
                         if stream.resume_token:
                             token = stream.resume_token
                         if change:

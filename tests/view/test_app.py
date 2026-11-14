@@ -115,3 +115,98 @@ def test_one_database_round_trip_for_state(rig):
     before = db.reads
     client.get('/api/state')
     assert db.reads == before + 1
+
+
+def test_stopline_does_not_draw_an_unconfirmed_stop(rig):
+    client, db, stage, app = rig
+    stage.start_run('stopline')
+    stage.run['stop_at'] = stage.run['created_at']
+    state = client.get('/api/state').json()
+    assert state['stop'] is None  # StopLine's boundary comes only from its stored receipt.
+
+
+def test_refusal_keeps_the_original_policy_and_operator_chain(rig):
+    client, db, stage, app = rig
+    stage.start_run('stopline')
+    stage.press_stop()
+    stage.resume_worker()
+    action_id = db.records['audit'][-1]['action_id']
+    chain = client.get('/api/chain/' + action_id).json()
+    assert chain['effect'] is None
+    assert chain['policy']['_id'] == 1
+    assert [row['holder'] for row in chain['permissions']] == ['person:operator', 'agent:repair', 'agent:worker-2']
+    assert chain['audit'][-1]['detail']['revoked_by'] == 'person:operator'
+
+
+def test_a_closed_stream_is_reopened(rig):
+    client, db, stage, app = rig
+    assert db.opened.wait(1)
+    app.state.feed.stream.close()
+    deadline = time.monotonic() + 2
+    while db.watches < 2 and time.monotonic() < deadline:
+        time.sleep(.02)
+    assert db.watches >= 2
+
+
+def test_errors_do_not_leak_connection_details(rig):
+    client, db, stage, app = rig
+    def failed():
+        raise RuntimeError('private-connection-details')
+    stage.press_stop = failed
+    result = client.post('/api/key/S')
+    assert result.status_code == 503
+    assert 'private-connection' not in result.text
+
+
+def test_missing_covered_record_is_unknown_and_not_invented(rig):
+    client, db, stage, app = rig
+    stage.start_run('stopline')
+    stage.press_stop()
+    db.records['receipts'][-1]['covered'].append('missing-record')
+    row = client.get('/api/state').json()['receipt']['rows'][-1]
+    assert row['action_id'] == 'missing-record'
+    assert row['outcome'] == 'unknown'
+    assert row['evidence'] is None
+
+
+def test_chain_database_failure_is_pending_and_sanitized(rig, monkeypatch):
+    client, db, stage, app = rig
+    def failed(*args):
+        raise RuntimeError('private connection details')
+    monkeypatch.setattr('stopline.view.read_chain', failed)
+    response = client.get('/api/chain/an-action')
+    assert response.status_code == 503
+    assert response.json()['pending'] is True
+    assert 'private connection details' not in response.text
+
+
+def test_no_numbers_are_invented_without_a_provider():
+    from stopline.view import create_app
+    db = FakeDB()
+    with TestClient(create_app(db, ScriptedStage(db, {}), {})) as client:
+        response = client.post('/api/key/M').json()
+    assert response['lines'] == []
+    assert response['message'] == 'Numbers have not been measured.'
+
+
+def test_sse_carries_the_confirmed_rows(rig):
+    import asyncio
+    import json
+    client, db, stage, app = rig
+    stage.start_run('stopline')
+    endpoint = next(route.endpoint for route in app.routes if route.path == '/api/events')
+    class ConnectedRequest:
+        async def is_disconnected(self):
+            return False
+    async def receive():
+        response = await endpoint(ConnectedRequest())
+        try:
+            assert response.media_type == 'text/event-stream'
+            await anext(response.body_iterator)  # reconnect instruction
+            event = await anext(response.body_iterator)
+            return json.loads(next(line[6:] for line in event.splitlines() if line.startswith('data: ')))
+        finally:
+            await response.body_iterator.aclose()
+    payload = asyncio.run(receive())
+    assert len(payload['state']['rows']) == 3
+    assert payload['state']['run']['mode'] == 'stopline'
