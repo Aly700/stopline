@@ -86,8 +86,9 @@ function render(state) {
     }
   } else if (!pressed && seenKey === undefined) seenKey = 0;
   const run = state.run;
-  $('mode').textContent = ({flag:'RUN 1 · STOP FLAG', stopline:'RUN 2 · STOPLINE', fixed:'FIXED RULES'})[run?.mode] || 'READY';
-  $('run-label').textContent = ({flag:'Workers check a stop flag before each step', fixed:'Rules read once when the run starts', stopline:'Every action checked in MongoDB Atlas, in one transaction'})[run?.mode] || 'Press 1 to begin';
+  const liveAgent = String(run?.planner || '').startsWith('deep agent');
+  $('mode').textContent = liveAgent ? 'RUN 3 · LIVE AGENT' : ({flag:'RUN 1 · STOP FLAG', stopline:'RUN 2 · STOPLINE', fixed:'FIXED RULES'})[run?.mode] || 'READY';
+  $('run-label').textContent = liveAgent ? `${run.planner} · every tool call checked in MongoDB Atlas` : ({flag:'Workers check a stop flag before each step', fixed:'Rules read once when the run starts', stopline:'Every action checked in MongoDB Atlas, in one transaction'})[run?.mode] || 'Press 1 to begin';
   $('context').textContent = `${run?.cluster === 'mock' ? 'Mock cluster · ' : ''}timing controlled · router built for this test`;
   const repair = state.permissions.find(permission => permission.holder === 'agent:repair');
   const workers = state.permissions.filter(permission => ['agent:worker-1', 'agent:worker-2'].includes(permission.holder));
@@ -231,7 +232,7 @@ async function pollOperation() {
   finally { operationLoading = false; }
 }
 async function keypress(key) {
-  if (key === '/' || key === 'Q') { openAsk(); return; }
+  if (key === '/') { openAsk(); return; }
   if (busy) return;
   pending = null;
   if (key === 'P') {
@@ -332,7 +333,7 @@ document.addEventListener('keydown', event => {
   }
   if (event.repeat || event.ctrlKey || event.metaKey || event.altKey || /INPUT|TEXTAREA|SELECT/.test(event.target.tagName)) return;
   const key = event.key.toUpperCase();
-  if (!'12SKWRUVMPX/Q'.includes(key) || key.length !== 1 || $('chain-dialog').open) return;
+  if (!'123SKWRUVMPX/'.includes(key) || key.length !== 1 || $('chain-dialog').open) return;
   if ($('numbers-dialog').open && key !== 'M') $('numbers-dialog').close();
   event.preventDefault(); keypress(key);
 });

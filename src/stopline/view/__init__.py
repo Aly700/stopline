@@ -123,7 +123,7 @@ def create_app(db, stage, targets, numbers=None):
         commands = {'1': lambda: stage.start_run('flag'), '2': lambda: stage.start_run('stopline'),
                     'S': stage.press_stop, 'K': stage.cut_and_kill, 'W': stage.resume_worker,
                     'R': stage.restore_and_reconcile, 'U': stage.undo, 'V': stage.validation_rejection,
-                    'X': lambda: stage.overreach()}
+                    'X': lambda: stage.overreach(), '3': lambda: stage.start_agent_run()}
         if key == 'M':
             try:
                 lines = list(numbers()) if numbers is not None else []

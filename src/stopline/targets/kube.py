@@ -257,6 +257,6 @@ class KubeCluster:
             self.restore()
             script = Path(__file__).resolve().parents[3] / "k8s" / "reset.sh"
             try:
-                subprocess.run([str(script)], capture_output=True, text=True, check=True, timeout=9.5)
+                subprocess.run([str(script)], capture_output=True, text=True, check=True, timeout=20)
             except (OSError, subprocess.SubprocessError) as error:
                 raise TargetUnreachable("cluster reset did not finish; run k8s/reset.sh for details") from error

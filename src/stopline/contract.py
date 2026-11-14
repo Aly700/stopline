@@ -312,6 +312,7 @@ DEMO_HOLDS: dict[str, list[Hold]] = {
     Mode.STOPLINE: [
         {"principal": WORKER_ONE, "step": 1, "point": HoldPoint.AFTER_CHECK, "released": False},
         {"principal": WORKER_TWO, "step": 0, "point": HoldPoint.AFTER_CLAIM, "released": False},
+        {"principal": WORKER_TWO, "step": 1, "point": HoldPoint.BEFORE_CHECK, "released": False},
     ],
 }
 

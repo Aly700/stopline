@@ -55,6 +55,8 @@ def client() -> MongoClient:
             retryWrites=True,
             tz_aware=True,
             serverSelectionTimeoutMS=15000,
+            connectTimeoutMS=10000,
+            socketTimeoutMS=20000,   # no call waits forever after a network change
         )
     except RuntimeError:
         raise

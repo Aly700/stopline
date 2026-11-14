@@ -119,8 +119,8 @@ def read_state(db):
     rows = [action_row(row, run, permissions, held) for row in effects.values()]
     by_action = {row['action_id']: row for row in rows}
     for entry in records['audit']:
-        if entry['kind'] != 'deny' or not entry.get('action_id'):
-            continue
+        if entry['kind'] != 'deny' or not entry.get('action_id') or entry.get('reason') == 'no_undo':
+            continue   # "no undo" is a mark on the action it concerns, not a refused action of its own
         existing = by_action.get(entry['action_id'])
         if existing is None:
             rows.append(refusal_row(entry, run, permissions, held))
@@ -168,8 +168,8 @@ def read_state(db):
     # The stage saves this note only after it has looked up outstanding sends.
     # Pair it with target evidence and the stored finish time; a closed receipt
     # alone does not establish that an action was reconciled.
-    checked_router = any(task.get('note') == 'Restored the router and checked the outstanding sends.'
-                         for task in records['tasks'])
+    checked_router = bool(run.get('reconciled_at')) or any(
+        task.get('note') == 'Restored the router and checked the outstanding sends.' for task in records['tasks'])
     if receipt and checked_router:
         for row in rows + receipt_view['rows']:
             effect = effects.get(row['action_id'], {})

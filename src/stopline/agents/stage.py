@@ -155,6 +155,39 @@ class Stage:
             self._spawn(run_id, principal)
         return StageResult(True, f"Started the {mode} repair run.", run_id=run_id)
 
+    def end_previous(self):
+        """Before a new run: stop what is left of the last one, so nothing from it can act during the next."""
+        run = self.db.runs.find_one({"_id": self.run_id}) if self.run_id else None
+        if run and run["mode"] == Mode.STOPLINE and not run.get("stop_flag") and run.get("agent_mandate_id"):
+            try:
+                receipt = self.gate.stop(mandate_id=run["agent_mandate_id"], by=OPERATOR)
+                self.db.runs.update_one({"_id": run["_id"]}, {"$set": {
+                    "stop_flag": True, "status": "stopped", "receipt_id": receipt["_id"],
+                    "stop_at": receipt["stopped_at"], "stop_at_local": time.time()}})
+            except Exception:
+                pass
+        for handle in list(self._processes.values()):
+            if handle.poll() is None:
+                handle.kill()
+                try:
+                    handle.wait(timeout=2)
+                except Exception:
+                    pass
+
+    def start_agent_run(self):
+        """Key 3: a language-model agent makes the repair. Every tool call it makes goes through the same check."""
+        from stopline import deep
+
+        with self._job_lock:
+            if any(handle.poll() is None for handle in self._processes.values()):
+                return StageResult(False, "Wait for the previous workers to finish before starting a run.",
+                                   run_id=self.run_id)
+        result = deep.start_agent_run(self.db, self.gate, self.sender, self.targets, cluster=self.cluster)
+        if result.ok and result.run_id:
+            with self._job_lock:
+                self.run_id = result.run_id
+        return result
+
     def press_stop(self):
         run_id = self.run_id
         return self._command("press_stop", lambda: self._stop(run_id), run_id)
@@ -193,9 +226,10 @@ class Stage:
         action_id = action_id_for(run_id, WORKER_TWO, 0)
         self.targets[ROUTER].cut()
         self.db.runs.update_one({"_id": run_id}, {"$set": {"holds": [
-            {**h, "released": True} if h["principal"] == WORKER_TWO else h for h in run["holds"]
+            {**h, "released": True} if h["principal"] == WORKER_TWO and h["step"] == 0 else h
+            for h in run["holds"]
         ]}})
-        deadline = time.monotonic() + 2
+        deadline = time.monotonic() + 8   # generous: the database may be slow on a new network
         while time.monotonic() < deadline:
             effect = self.db.effects.find_one({"_id": action_id})
             state = self.targets[ROUTER].state()
@@ -204,7 +238,7 @@ class Stage:
             if effect and effect["state"] == EffectState.SENT and taken:
                 if handle.poll() is None:
                     handle.kill()
-                handle.wait(timeout=0.2)
+                handle.wait(timeout=2)
                 self._note(run_id, WORKER_TWO, "Killed after the router took the 25% shift; its outcome is unknown.",
                            status=TaskStatus.KILLED, held_at=None)
                 return StageResult(True, "Cut the router and killed worker two after its send.", run_id=run_id)
@@ -232,6 +266,7 @@ class Stage:
     def _reconcile(self, run_id):
         run = self._run(run_id)
         self.targets[ROUTER].restore()
+        self.db.runs.update_one({"_id": run_id}, {"$currentDate": {"reconciled_at": True}})
         effects = self.db.effects.find({"run_id": run_id, "state": EffectState.SENT})
         pending = False
         for effect in effects:

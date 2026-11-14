@@ -19,6 +19,7 @@ import socket
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 from pathlib import Path
 from typing import Any
@@ -26,7 +27,7 @@ from typing import Any
 import uvicorn
 
 from . import db as stopline_db
-from .contract import PAGE_PORT, ROUTER_PORT, Hold, StageResult
+from .contract import PAGE_PORT, ROUTER_PORT, WORKER_ONE, Hold, StageResult
 from .wire import sender_routes, target_routes
 
 
@@ -61,10 +62,36 @@ class ResettingStage:
         self._stage = stage
         self._targets = targets
         self._reset_all = reset_all
+        self._starting = threading.Lock()
+
+    def _fresh(self, start: Any) -> StageResult:
+        # One start at a time: a second press while the first is still resetting changes nothing.
+        if not self._starting.acquire(blocking=False):
+            return StageResult(True, "Start run is pending.", pending=True)
+        try:
+            self._stage.end_previous()
+            self._reset_all(self._targets)
+            return start()
+        finally:
+            self._starting.release()
 
     def start_run(self, mode: str, holds: list[Hold] | None = None) -> StageResult:
-        self._reset_all(self._targets)
-        return self._stage.start_run(mode, holds)
+        return self._fresh(lambda: self._stage.start_run(mode, holds))
+
+    def start_agent_run(self) -> StageResult:
+        return self._fresh(self._stage.start_agent_run)
+
+    def press_stop(self) -> StageResult:
+        # The baseline only shows its flaw once worker one has read the flag and is held there.
+        # Pressed earlier, the flag would simply work, so ask for a moment. StopLine runs take a stop any time.
+        run_id = self._stage.run_id
+        run = self._stage.db.runs.find_one({"_id": run_id}) if run_id else None
+        if run and run["mode"] != "stopline" and not run.get("stop_flag"):
+            waiting = [h for h in run.get("holds", []) if h["principal"] == WORKER_ONE and not h["released"]]
+            task = self._stage.db.tasks.find_one({"_id": f"{run_id}:{WORKER_ONE}"}) or {}
+            if waiting and task.get("status") != "held":
+                return StageResult(False, "Not yet. Wait for Ready for S.", run_id=run_id)
+        return self._stage.press_stop()
 
     def __getattr__(self, name: str) -> Any:
         try:
@@ -179,8 +206,11 @@ def main() -> None:
     os.environ["STOPLINE_SENDER_URL"] = f"http://127.0.0.1:{args.port}"  # worker processes inherit this
     os.environ.setdefault("STOPLINE_MODEL", DEFAULT_MODEL)
     os.environ.setdefault("STOPLINE_AGENT_MODEL", DEFAULT_MODEL)
-    start_router(Path(tempfile.gettempdir()) / "stopline-router.sqlite")
-    uvicorn.run(build(args.cluster, args.port, args.voice, args.model, args.database, args.fresh), host="127.0.0.1", port=args.port, log_level="warning")
+    router = start_router(Path(tempfile.gettempdir()) / "stopline-router.sqlite")
+    try:
+        uvicorn.run(build(args.cluster, args.port, args.voice, args.model, args.database, args.fresh), host="127.0.0.1", port=args.port, log_level="warning", timeout_graceful_shutdown=2)
+    finally:
+        router.terminate()   # also when the server is stopped by a signal
 
 
 if __name__ == "__main__":
