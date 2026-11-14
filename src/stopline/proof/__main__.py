@@ -47,6 +47,7 @@ def print_result(result):
     print('Added delay excludes holds and target I/O; producer: ' + result['producer'])
     if result['producer'] == 'real':
         print('StopLine late-start schedules: ' + (', '.join(summary_numbers(result)['counterexamples']) or 'none'))
+        print(result['sweep_detail'])
     cache = MemoryDatabase()
     cache['proof_results'].insert_one(result)
     print('\n'.join(summary(cache)))

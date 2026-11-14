@@ -244,6 +244,7 @@ def run_real_suite(*, work_dir, scratch_db, router_url=URL):
     result = dict(_id=uuid4().hex, created_at=utcnow(), backend='real', producer='real', schema_version=2,
                   bounds=dict(BOUNDS, concurrent_schedules=8), definitions=DEFINITIONS,
                   sources={'gate': 'real', 'sender': 'real', 'cluster': 'real mock-cluster adapter',
+                           'stop': 'gate.stop then sender.sweep before hold release; measurement marker remains at gate commit',
                            'router': 'real HTTP process and target-owned SQLite ledger on port 8796',
                            'workers': 'deterministic protocol driver, not production worker processes',
                            'retry': 'one injected transient abort retried by PyMongo; real stop between attempts',

@@ -13,7 +13,7 @@ from stopline.contract import (
 )
 from stopline.proof.backend import SOURCES, UnsupportedSchedule, build_runtime
 from stopline.proof.fakes import effect_for
-from stopline.proof.metrics import DEFINITIONS, INVARIANTS, aggregate, evidence_checks, measure
+from stopline.proof.metrics import DEFINITIONS, INVARIANTS, aggregate, evidence_checks, measure, sweep_counts
 from stopline.proof.schedules import BOUNDS, schedules
 
 
@@ -25,6 +25,7 @@ class Driver:
     def __init__(self, runtime, case, mode, run_id):
         self.runtime, self.db, self.case, self.mode, self.run_id = runtime, runtime.db, case, mode, run_id
         self.gate, self.sender, self.targets = runtime.gate, runtime.sender, runtime.targets
+        self.stopped_workers = set()
         self.root_id, self.repair_id = f'{run_id}-root', f'{run_id}-repair'
         self.worker_ids = {worker: f'{run_id}-{worker.split(":")[1]}' for worker in DEMO_PLAN}
         self.run = dict(_id=run_id, mode=mode, cluster='mock', status='running',
@@ -65,12 +66,29 @@ class Driver:
     def stop(self):
         if self.run['stop_at_local'] is not None:
             return
+        stop_at_local = None
         if self.mode == 'stopline':
             receipt = self.gate.stop(mandate_id=self.repair_id, by=OPERATOR)
+            # Preserve the old measurement boundary: time after gate commit,
+            # never after the sweep. Applications during the sweep still count.
+            stop_at_local = time.time()
             self.run.update(receipt_id=receipt['_id'], stop_at=receipt['stopped_at'], stop_seq=receipt['stop_seq'])
+            if self.runtime.backend == 'real':
+                self.db['proof_observations'].insert_one(dict(
+                    run_id=self.run_id, event='stop_committed', receipt_at_commit=receipt,
+                    effects=[], receipts=[], target_logs=[], sends=[], at_epoch=stop_at_local,
+                ))
+                for target in self.targets.values():
+                    target.sweep_run_id = self.run_id
+                try:
+                    self.sender.sweep(receipt['covered'])
+                finally:
+                    for target in self.targets.values():
+                        target.sweep_run_id = None
+                self.run['sweep_completed_at_local'] = time.time()
         else:
             self.run['stop_at'] = utcnow()
-        self.run.update(stop_flag=True, stop_at_local=time.time(), status='stopped')
+        self.run.update(stop_flag=True, stop_at_local=stop_at_local or time.time(), status='stopped')
         for hold in self.run['holds']:
             hold['released'] = True
         self._save_run()
@@ -118,6 +136,8 @@ class Driver:
             collection.insert_one(dict(run_id=self.run_id, key=key, duration_ms=duration_ms))
 
     def step(self, worker, step, *, hold=None, dispatch=None, returned=None, claim_only=False):
+        if worker in self.stopped_workers:
+            return
         action = self.action(worker, step)
         if hold == HoldPoint.BEFORE_CHECK:
             self.reach_hold(worker, step, hold)
@@ -158,7 +178,12 @@ class Driver:
         if hold == HoldPoint.AFTER_SEND or returned:
             target.on_return[action.action_id] = returned or (lambda: self.reach_hold(worker, step, hold))
         if self.mode == 'stopline':
-            self.sender.send(action.action_id)
+            try:
+                self.sender.send(action.action_id)
+            except NotClaimed:
+                self.stopped_workers.add(worker)
+                self.observe('sender_refused_after_sweep', action_id=action.action_id)
+                return
         else:
             effect = self.db['effects'].find_one({'_id': action.action_id})
             effect.update(state='sent', sent_at=utcnow())
@@ -308,6 +333,9 @@ def checks_for(case, mode, data):
                 any(r['status'] == 'open' for r in o['receipts']) and any(e['state'] == 'sent' for e in o['effects']) for o in snapshots)
             checks['closed_after_reconcile'] = all(r['status'] == 'closed' for r in data['receipts'])
         if case.kind == 'receipt_closure':
+            committed = [o['receipt_at_commit'] for o in data['observations'] if o['event'] == 'stop_committed']
+            if committed:
+                checks['open_while_unknown'] = any(r['status'] == 'open' for r in committed)
             checks['fenced_late_arrival'] = any(row['event'] == 'fenced' for row in data['target_logs']) and not any(
                 row['event'] == 'applied' for row in data['target_logs'])
     if case.kind == 'router_restart':
@@ -357,6 +385,9 @@ def finalize(result):
         from stopline.proof import summary_numbers
         result['stopline_late_start_schedules'] = summary_numbers(result)['counterexamples']
         result['late_start_free'] = not result['stopline_late_start_schedules']
+        result['sweep_counts'] = sweep_counts(result)
+        result['sweep_detail'] = (f"Sweep: {result['sweep_counts']['fenced']} fenced; "
+                                  f"{result['sweep_counts']['already_applied']} already at target when queried.")
     return result
 
 

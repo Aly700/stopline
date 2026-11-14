@@ -66,6 +66,38 @@ def system_of_effect(effect):
     return effect['target'].split('/', 1)[0]
 
 
+def sweep_counts(result: dict) -> dict[str, int]:
+    """Distinct actions fenced or observed applied by actual sweep target calls.
+
+    Match each recorded reply to the target's own journal. Already-terminal
+    effects that sweep never queried are excluded, even if returned by sweep.
+    """
+    fenced, applied = set(), set()
+    for row in result['rows']:
+        if row['mode'] != 'stopline' or 'evidence' not in row:
+            continue
+        data = row['evidence']
+        for observation in data['observations']:
+            operation = observation['event']
+            if operation not in ('sweep_lookup', 'sweep_fence'):
+                continue
+            evidence = observation['target_evidence']
+            if operation == 'sweep_lookup' and not observation['found']:
+                continue
+            event = 'applied' if evidence.get('applied') else (
+                'fenced' if operation == 'sweep_fence' and evidence.get('fenced') else None)
+            if event is None or not valid_epoch(evidence.get('at_epoch')):
+                continue
+            matches = any(
+                log['event'] == event and all(log.get(key) == evidence.get(key)
+                                            for key in ('action_id', 'system', 'at_epoch'))
+                for log in data['target_logs'])
+            if matches:
+                key = (data['run']['_id'], evidence['action_id'])
+                (applied if event == 'applied' else fenced).add(key)
+    return {'fenced': len(fenced), 'already_applied': len(applied)}
+
+
 def measure(data: dict[str, Any]) -> dict[str, int | None]:
     effects = {e['_id']: e for e in data['effects']}
     logs, sends = data['target_logs'], data['sends']

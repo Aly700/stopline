@@ -29,6 +29,7 @@ class ObservedTarget:
         self.on_return = {}
         self.requests = {}
         self.fault_active = False
+        self.sweep_run_id = None
 
     def send(self, action: Action):
         self.requests[action.action_id] = action
@@ -56,10 +57,21 @@ class ObservedTarget:
         return self.send(self.requests[action_id])
 
     def lookup(self, action_id):
-        return self.target.lookup(action_id)
+        result = self.target.lookup(action_id)
+        self._sweep_reply('sweep_lookup', action_id, result.evidence, found=result.found)
+        return result
 
     def fence(self, action_id):
-        return self.target.fence(action_id)
+        evidence = self.target.fence(action_id)
+        self._sweep_reply('sweep_fence', action_id, evidence)
+        return evidence
+
+    def _sweep_reply(self, event, action_id, evidence, **detail):
+        if self.sweep_run_id is not None:
+            self.db['proof_observations'].insert_one(dict(
+                run_id=self.sweep_run_id, event=event, action_id=action_id,
+                target_evidence=evidence, effects=[], receipts=[], target_logs=[], sends=[], **detail,
+            ))
 
     def state(self):
         return self.target.state()
