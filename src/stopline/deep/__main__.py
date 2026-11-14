@@ -31,8 +31,7 @@ def demonstrate():
             return 1
     db = None
     process = None
-    Path('.lane').mkdir(exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix='deep-', dir='.lane') as directory:
+    with tempfile.TemporaryDirectory(prefix='stopline-deep-') as directory:
         try:
             process = subprocess.Popen(
                 [sys.executable, '-m', 'stopline.targets.router', '--port', '8816',

@@ -1,5 +1,5 @@
-// Copy into ~/Projects/witness before running so playwright-core resolves there.
-// Start tests.view.demo_server on 8795; pass an absolute .lane directory as argv[2].
+// Run from a directory where playwright-core is installed.
+// Start tests.view.demo_server on 8795; pass an absolute output directory as argv[2].
 import {chromium} from 'playwright-core';
 import assert from 'node:assert/strict';
 
