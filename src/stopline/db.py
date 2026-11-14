@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Callable, TypeVar
 
 import certifi
+import pymongo
 from pymongo import MongoClient
 from pymongo.client_session import ClientSession
 from pymongo.database import Database
@@ -25,6 +26,7 @@ from pymongo.write_concern import WriteConcern
 DB_NAME = "stopline"
 TEST_PREFIX = "stopline_test_"
 ENV_FILE = Path.home() / ".stopline_env"
+TRANSACTION_DEADLINE_SECONDS = 30   # the driver would otherwise retry a transaction for two minutes
 
 T = TypeVar("T")
 
@@ -90,7 +92,7 @@ def run_transaction(callback: Callable[[ClientSession], T]) -> tuple[T, int]:
         attempts += 1
         return callback(session)
 
-    with client().start_session() as session:
+    with client().start_session() as session, pymongo.timeout(TRANSACTION_DEADLINE_SECONDS):
         result = session.with_transaction(
             counted,
             read_concern=ReadConcern("snapshot"),

@@ -11,7 +11,7 @@ import time
 import httpx
 
 from stopline.contract import (
-    Action, EffectState, HoldPoint, Mode, OPERATOR, TaskStatus, TargetTimeout,
+    Action, EffectState, HoldPoint, Mode, NotClaimed, OPERATOR, TaskStatus, TargetTimeout,
     TargetUnreachable, TERMINAL_STATES, args_hash, system_of,
 )
 
@@ -150,7 +150,12 @@ class Worker:
             return False
         self._hold(HoldPoint.AFTER_CLAIM, position)
         self._save(f"Sending {action.tool} to {action.target}.")
-        result = self.sender.send(action.action_id)
+        try:
+            result = self.sender.send(action.action_id)
+        except NotClaimed:
+            # The stop's sweep settled this action (fenced at the target) while the worker was held.
+            self._stop("Refused: this action was settled by the stop before it could be sent.")
+            return False
         # Sender.send owns outcome recording in the final shared interface.
         self._hold(HoldPoint.AFTER_SEND, position)
         return result["state"]

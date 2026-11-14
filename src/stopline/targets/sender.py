@@ -63,3 +63,13 @@ class TargetSender:
             return effect
         state = EffectState.APPLIED if applied else EffectState.REJECTED
         return self.gate.record_outcome(action_id, state, record)
+
+    def sweep(self, action_ids) -> list[Effect]:
+        """After a stop: settle every listed action that was claimed and has no evidence yet.
+
+        Each target is asked about the action by its id. One that already arrived is recorded as applied.
+        One that never arrived is fenced at the target, so a send that turns up late is refused there.
+        One whose target cannot be reached stays as it is: unknown.
+        """
+        return [self.reconcile(action_id) for action_id in action_ids]
+

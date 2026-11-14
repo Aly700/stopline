@@ -267,6 +267,9 @@ class Sender:
             return effect
         return self.gate.record_outcome(action_id, "applied" if answer.applied else "rejected", answer.evidence)
 
+    def sweep(self, action_ids):
+        return []   # this fake world has no fences; the real sweep is covered end to end
+
     def reconcile(self, action_id):
         effect = self.db.effects.find_one({"_id": action_id})
         found = self.targets[system_of(effect["target"])].lookup(action_id)

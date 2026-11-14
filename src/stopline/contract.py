@@ -542,6 +542,10 @@ class Sender(Protocol):
 
     def reconcile(self, action_id: str) -> Effect: ...
 
+    def sweep(self, action_ids: list[str]) -> list[Effect]:
+        """After a stop: reconcile every listed action still sent. One that never reached its target is
+        fenced there, so a send that turns up late is refused. An unreachable target leaves it unknown."""
+
 
 class StageAPI(Protocol):
     """What the page's keys call. Every call returns within two seconds or says pending."""

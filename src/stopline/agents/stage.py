@@ -163,6 +163,9 @@ class Stage:
         if not run["stop_flag"]:
             if run["mode"] == Mode.STOPLINE:
                 receipt = self.gate.stop(mandate_id=run["agent_mandate_id"], by=OPERATOR)
+                # Second half of a stop: ask each target about work that was claimed but has no
+                # evidence yet. What never arrived is fenced there before any hold is released.
+                self.sender.sweep(receipt["covered"])
                 fields = {"receipt_id": receipt["_id"], "stop_at": receipt["stopped_at"]}
             fields.update(stop_flag=True, status="stopped", stop_at_local=time.time())
             update = {"$set": fields}
