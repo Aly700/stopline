@@ -121,7 +121,7 @@ def test_stopline_restart_refusal_names_stopper_and_time(rig):
     first = eventually(lambda: (row if (row := task(db, run_id, WORKER_ONE))["status"] == "stopped" else None))
     run = db.runs.find_one({"_id": run_id})
     receipt = db.receipts.find_one({"_id": run["receipt_id"]})
-    assert OPERATOR in first["note"]
+    assert "Operator stopped the permission" in first["note"]
     assert receipt["stopped_at"].isoformat() in first["note"]
     assert not db.target_log.find_one({"_id": action_id_for(run_id, WORKER_ONE, 1)})
     assert db.mandates.find_one({"_id": run["root_mandate_id"]})["status"] == "active"
@@ -148,7 +148,7 @@ def kill_resume_sequence(rig):
     assert stage.resume_worker().ok
     resumed = eventually(lambda: (row if (row := task(db, run_id, WORKER_TWO))["status"] == "stopped" else None))
     assert resumed["pid"] != pid and resumed["position"] == 1
-    assert OPERATOR in resumed["note"]
+    assert "Operator stopped the permission" in resumed["note"]
     assert not db.effects.find_one({"_id": action_id_for(run_id, WORKER_TWO, 1)})
     assert len([row for row in db.target_log.find({"system": "router"})
                 if row["action_id"].startswith(run_id)]) == 1
@@ -188,6 +188,52 @@ def test_each_hold_is_reached_saved_and_released_by_stop(rig, point):
     assert stage.press_stop().ok
     eventually(lambda: task(db, result.run_id, WORKER_ONE)["status"] in {"stopped", "done"})
     assert all(h["released"] for h in db.runs.find_one({"_id": result.run_id})["holds"])
+
+
+@pytest.mark.parametrize("point", [HoldPoint.AFTER_CLAIM, HoldPoint.AFTER_SEND])
+def test_stop_sweep_settles_the_action_before_releasing_its_hold(rig, monkeypatch, point):
+    from stopline.contract import Action
+
+    stage, db, targets = rig
+    # A lost reply leaves an applied action unknown, ready for the stop to settle.
+    targets["cluster"].lose_reply = point == HoldPoint.AFTER_SEND
+    result = stage.start_run(Mode.STOPLINE, holds=[
+        {"principal": WORKER_ONE, "step": 0, "point": point, "released": False},
+        {"principal": WORKER_TWO, "step": 0, "point": HoldPoint.BEFORE_CHECK, "released": False},
+    ])
+    run_id = result.run_id
+    eventually(lambda: held(db, run_id, WORKER_ONE))
+    eventually(lambda: held(db, run_id, WORKER_TWO))
+    action_id = action_id_for(run_id, WORKER_ONE, 0)
+    assert db.effects.find_one({"_id": action_id})["state"] == "sent"
+    original = stage.sender.sweep
+    swept = []
+
+    def sweep(action_ids):
+        assert not any(h["released"] for h in db.runs.find_one({"_id": run_id})["holds"])
+        outcomes = original(action_ids)
+        swept.extend(outcomes)
+        assert not any(h["released"] for h in db.runs.find_one({"_id": run_id})["holds"])
+        return outcomes
+
+    monkeypatch.setattr(stage.sender, "sweep", sweep)
+    assert stage.press_stop().ok
+    row = eventually(lambda: (t if (t := task(db, run_id, WORKER_ONE))["status"] == "stopped" else None))
+    effect = db.effects.find_one({"_id": action_id})
+    assert effect in swept
+    if point == HoldPoint.AFTER_CLAIM:
+        assert effect["state"] == "rejected" and effect["evidence"]["fenced"]
+        assert row["note"] == "Refused: this action was settled by the stop before it could be sent."
+        assert db.target_log.find({"system": "cluster"}) == []
+        # The target itself also rejects a late arrival, independent of the sender.
+        action = Action(action_id, run_id, effect["mandate_id"], WORKER_ONE,
+                        effect["tool"], effect["target"], effect["args"])
+        assert not targets["cluster"].send(action).applied
+        assert db.target_log.find({"system": "cluster"}) == []
+    else:
+        assert effect["state"] == "applied"
+        assert db.target_log.find_one({"_id": action_id}) == effect["evidence"]
+        assert db.target_fences.find() == []
 
 
 def test_production_launcher_passes_database_and_sender_url(rig, monkeypatch):

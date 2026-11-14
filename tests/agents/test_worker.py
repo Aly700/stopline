@@ -1,6 +1,7 @@
-from stopline.contract import EffectState, Mode, WORKER_ONE, WORKER_TWO, action_id_for
-from stopline.agents.worker import Worker
+from stopline.contract import Admission, EffectState, Mode, OPERATOR, REPAIR_AGENT, Reason, WORKER_ONE, WORKER_TWO, action_id_for
+from stopline.agents.worker import Worker, refusal_note, utcnow
 import httpx
+import pytest
 from .test_stage import rig, task
 
 
@@ -77,3 +78,17 @@ def test_claim_connection_failure_keeps_the_unsent_step_saved(rig, monkeypatch):
     assert db.effects.find_one({"_id": action_id_for(worker.run_id, WORKER_ONE, 0)})["state"] == "admitted"
     assert not db.effects.find_one({"_id": action_id_for(worker.run_id, WORKER_ONE, 1)})
     assert db.target_log.find() == []
+
+
+@pytest.mark.parametrize("principal,name", [
+    (OPERATOR, "Operator"), (REPAIR_AGENT, "Repair agent"),
+    (WORKER_ONE, "Worker one"), (WORKER_TWO, "Worker two"),
+])
+def test_refusals_use_display_names_and_permission(principal, name):
+    at = utcnow()
+    admission = Admission(False, "action", Reason.REVOKED, detail={"revoked_by": principal, "revoked_at": at})
+    assert refusal_note(admission) == f"Refused: {name} stopped the permission at {at.isoformat()}."
+
+
+def test_refusal_reason_does_not_expose_the_internal_permission_name():
+    assert refusal_note(Admission(False, "action", Reason.UNKNOWN_MANDATE)) == "Refused: unknown permission."

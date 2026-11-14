@@ -62,7 +62,7 @@ class SavedPlanner:
         tasks = self.db.tasks.find({"run_id": self.source_run_id or run_id,
                                     "principal": {"$in": list(WORKERS)}})
         steps = {task["principal"]: task["plan"] for task in tasks}
-        return PlannedRepair(prepare_steps(run_id, steps), "saved", "Loaded the saved repair from tasks.")
+        return PlannedRepair(prepare_steps(run_id, steps), "saved", "Loaded the saved repair.")
 
 
 class ModelPlanner:
@@ -95,4 +95,4 @@ class ModelPlanner:
         except Exception as error:
             why = f"Model planner failed ({type(error).__name__})"
         saved = self.fallback.plan(run_id, mandate)
-        return PlannedRepair(saved.steps, "saved", f"{why}; loaded the saved repair from tasks.")
+        return PlannedRepair(saved.steps, "saved", f"{why}. Loaded the saved repair.")

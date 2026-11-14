@@ -15,7 +15,7 @@ class RepairAgent:
             limits={"max_actions": 4, "max_shift_percent": 50}, ttl_seconds=1800,
         )
         if not handed.allowed:
-            raise RuntimeError("repair mandate was refused")
+            raise RuntimeError("repair permission was refused")
         self.db.runs.update_one({"_id": run_id}, {"$set": {
             "root_mandate_id": root["_id"], "agent_mandate_id": handed.mandate_id,
         }})
@@ -25,7 +25,7 @@ class RepairAgent:
             "_id": f"{run_id}:{principal}", "run_id": run_id, "principal": principal,
             "mandate_id": None, "plan": saved.steps[principal], "position": 0,
             "planner": "scripted", "status": TaskStatus.RUNNING, "held_at": None,
-            "pid": None, "note": "Saved the fallback repair; waiting for delegation.", "updated_at": utcnow(),
+            "pid": None, "note": "Saved a backup repair. Waiting for permission.", "updated_at": utcnow(),
         } for principal in WORKERS]
         tasks.append({
             "_id": f"{run_id}:{REPAIR_AGENT}", "run_id": run_id, "principal": REPAIR_AGENT,
@@ -46,16 +46,16 @@ class RepairAgent:
             child = self.gate.hand_down(parent_id=handed.mandate_id, holder=principal,
                                         ttl_seconds=900, **scope)
             if not child.allowed:
-                raise RuntimeError("worker mandate was refused")
+                raise RuntimeError("worker permission was refused")
             self.db.tasks.update_one({"_id": f"{run_id}:{principal}"}, {"$set": {
                 "mandate_id": child.mandate_id, "plan": steps[principal], "planner": chosen.source,
-                "fixed_rules": scope, "note": "Saved the repair steps and received a narrower mandate.",
+                "fixed_rules": scope, "note": "Saved the repair steps and received a narrower permission.",
                 "updated_at": utcnow(),
             }})
         self.db.tasks.update_one({"_id": f"{run_id}:{REPAIR_AGENT}"}, {"$set": {
             "plan": [s for plan in steps.values() for s in plan], "position": 4,
             "planner": chosen.source, "status": TaskStatus.DONE,
-            "note": f"{chosen.note} Delegated narrower mandates to both workers.", "updated_at": utcnow(),
+            "note": f"{chosen.note} Handed down narrower permissions to both workers.", "updated_at": utcnow(),
         }})
         self.db.runs.update_one({"_id": run_id}, {"$set": {
             "planner": chosen.source, "planner_note": chosen.note,

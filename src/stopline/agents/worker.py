@@ -11,9 +11,16 @@ import time
 import httpx
 
 from stopline.contract import (
-    Action, EffectState, HoldPoint, Mode, NotClaimed, OPERATOR, TaskStatus, TargetTimeout,
-    TargetUnreachable, TERMINAL_STATES, args_hash, system_of,
+    Action, EffectState, HoldPoint, Mode, NotClaimed, OPERATOR, REPAIR_AGENT,
+    TaskStatus, TargetTimeout, TargetUnreachable, TERMINAL_STATES,
+    WORKER_ONE, WORKER_TWO, args_hash, system_of,
 )
+
+
+DISPLAY_NAMES = {
+    OPERATOR: "Operator", REPAIR_AGENT: "Repair agent",
+    WORKER_ONE: "Worker one", WORKER_TWO: "Worker two",
+}
 
 
 def utcnow():
@@ -27,8 +34,10 @@ def refusal_note(result):
     if hasattr(when, "isoformat"):
         when = when.isoformat()
     if who is not None and when is not None:
-        return f"Refused: {who} stopped the mandate at {when} ({result.reason})."
-    return f"Refused: {result.reason}."
+        name = DISPLAY_NAMES.get(who, "Permission holder")
+        return f"Refused: {name} stopped the permission at {when}."
+    reason = result.reason.replace("_", " ").replace("mandate", "permission")
+    return f"Refused: {reason}."
 
 
 class StopListener:
@@ -103,7 +112,7 @@ class Worker:
         if mode == Mode.FLAG:
             checked = self.db.runs.find_one({"_id": self.run_id})
             if checked["stop_flag"]:
-                self._stop(f"Stopped: {OPERATOR} set the flag at {checked['stop_at']}.")
+                self._stop(f"Stopped: Operator set the flag at {checked['stop_at']}.")
                 return False
         # Fixed rules were saved when this run started, and are never refreshed.
         rules = self.task["fixed_rules"]

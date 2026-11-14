@@ -27,6 +27,7 @@ from .worker import utcnow
 
 
 WORKERS = (WORKER_ONE, WORKER_TWO)
+CUT_PENDING = "Worker two has not sent yet. Press K again in a moment."
 
 
 class MissingValidator(Exception):
@@ -72,8 +73,8 @@ class Stage:
         try:
             return future.result(timeout=self.wait_seconds)
         except FutureTimeout:
-            return StageResult(True, f"{name.replace('_', ' ').capitalize()} is pending.",
-                               pending=True, run_id=run_id)
+            message = CUT_PENDING if name == "cut_and_kill" else f"{name.replace('_', ' ').capitalize()} is pending."
+            return StageResult(True, message, pending=True, run_id=run_id)
 
     def _run(self, run_id):
         if not run_id:
@@ -176,7 +177,7 @@ class Stage:
         self.db.runs.update_one({"_id": run_id}, {"$set": {
             "holds": [{**h, "released": True} for h in run["holds"]],
         }})
-        self._note(run_id, REPAIR_AGENT, f"{OPERATOR} stopped the repair and released its holds.")
+        self._note(run_id, REPAIR_AGENT, "Operator stopped the repair and released its holds.")
         return StageResult(True, "Stopped the repair and released every hold.", run_id=run_id)
 
     def cut_and_kill(self):
@@ -207,8 +208,7 @@ class Stage:
                            status=TaskStatus.KILLED, held_at=None)
                 return StageResult(True, "Cut the router and killed worker two after its send.", run_id=run_id)
             time.sleep(0.05)
-        return StageResult(True, "Router send is pending; press cut and kill again once it arrives.",
-                           pending=True, run_id=run_id)
+        return StageResult(True, CUT_PENDING, pending=True, run_id=run_id)
 
     def resume_worker(self):
         run_id = self.run_id
@@ -299,9 +299,9 @@ class Stage:
             if mark is None:
                 reason = (result.get("evidence") or {}).get("reason", Reason.STATE_CHANGED)
                 refusals.append({"action_id": effect["_id"], "reason": reason})
-        note = ("Undo has outcomes pending reconciliation." if pending else
-                "Undo was refused for actions whose state or authority changed." if refusals else
-                "Finished undo under the operator's root mandate; marked tools with no inverse.")
+        note = ("Some undo results are still unknown." if pending else
+                "Undo was refused because the state or permission changed." if refusals else
+                "Finished undo under Operator's own permission. Marked actions that have no undo.")
         self._note(run_id, REPAIR_AGENT, note)
         return StageResult(not refusals, note, pending=pending, run_id=run_id, detail={"refusals": refusals})
 

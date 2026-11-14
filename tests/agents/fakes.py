@@ -12,7 +12,7 @@ import uuid
 from pymongo.errors import DuplicateKeyError, WriteError
 
 from stopline.contract import (
-    Admission, Claim, EffectState, HandDown, Lookup, Reason, SendResult,
+    Admission, Claim, EffectState, HandDown, Lookup, NotClaimed, Reason, SendResult,
     TargetTimeout, TargetUnreachable, args_hash, system_of,
 )
 
@@ -200,13 +200,14 @@ class Gate:
             return receipt
 
     def record_outcome(self, action_id, state, evidence):
-        self.db.effects.update_one({"_id": action_id}, {"$set": {"state": state, "evidence": evidence}})
+        self.db.effects.update_one({"_id": action_id, "state": "sent"}, {"$set": {"state": state, "evidence": evidence}})
         return self.db.effects.find_one({"_id": action_id})
 
 
 class Target:
     def __init__(self, db, name):
         self.db, self.name = db, name
+        self.lose_reply = False
         self.db.target_state.update_one({"_id": name}, {"$setOnInsert": {
             "reachable": True, "armed": False, "last_action_id": None,
         }}, upsert=True)
@@ -219,14 +220,17 @@ class Target:
             existing = self.db.target_log.find_one({"_id": action.action_id})
             if existing:
                 return SendResult(True, existing)
+            fenced = self.db.target_fences.find_one({"_id": action.action_id})
+            if fenced:
+                return SendResult(False, fenced, Reason.FENCED)
             evidence = dict(_id=action.action_id, action_id=action.action_id,
                             system=self.name, at_epoch=time.time(), args=action.args,
-                            tool=action.tool, target=action.target)
+                            tool=action.tool, target=action.target, applied=True)
             self.db.target_log.insert_one(evidence)
             self.db.target_state.update_one({"_id": self.name}, {"$set": {
                 "last_action_id": action.action_id, "reachable": not state["armed"],
             }})
-            if state["armed"]:
+            if state["armed"] or self.lose_reply:
                 raise TargetTimeout()
             return SendResult(True, evidence)
 
@@ -241,36 +245,67 @@ class Target:
         self.db.target_state.update_one({"_id": self.name}, {"$set": {"armed": False, "reachable": True}})
 
     def lookup(self, action_id):
-        evidence = self.db.target_log.find_one({"_id": action_id})
-        return Lookup(bool(evidence), bool(evidence), evidence or {})
+        with self.db.lock:
+            if not self.state()["reachable"]:
+                raise TargetUnreachable()
+            evidence = (self.db.target_log.find_one({"_id": action_id})
+                        or self.db.target_fences.find_one({"_id": action_id}))
+            return Lookup(bool(evidence), bool(evidence and evidence.get("applied", True)), evidence or {})
+
+    def fence(self, action_id):
+        with self.db.lock:
+            found = self.lookup(action_id)
+            if found.found:
+                return found.evidence
+            evidence = dict(_id=action_id, action_id=action_id, system=self.name,
+                            at_epoch=time.time(), applied=False, fenced=True, reason=Reason.FENCED)
+            self.db.target_fences.insert_one(evidence)
+            return evidence
 
 
 class Sender:
     def __init__(self, db, gate, targets):
         self.db, self.gate, self.targets = db, gate, targets
+        self.claims = set()
 
     def claim(self, action_id):
-        return self.gate.claim(action_id, "sender")
+        result = self.gate.claim(action_id, "sender")
+        if result.claimed:
+            self.claims.add(action_id)
+        return result
 
     def send(self, action_id):
         from stopline.contract import Action
         self.db.send_calls.insert_one({"action_id": action_id})
+        if action_id not in self.claims:
+            raise NotClaimed(action_id)
+        self.claims.remove(action_id)
         effect = self.db.effects.find_one({"_id": action_id})
-        assert effect["state"] == "sent"
+        if effect["state"] != "sent" or effect["claimed_by"] != "sender":
+            raise NotClaimed(action_id)
         action = Action(action_id, effect["run_id"], effect["mandate_id"],
                         effect["principal"], effect["tool"], effect["target"], effect["args"])
         try:
             answer = self.targets[system_of(effect["target"])].send(action)
         except (TargetTimeout, TargetUnreachable):
             # Keep the request in flight long enough to prove a real process kill.
-            time.sleep(5)
+            if not self.targets[system_of(effect["target"])].state()["reachable"]:
+                time.sleep(5)
             return effect
         return self.gate.record_outcome(action_id, "applied" if answer.applied else "rejected", answer.evidence)
 
     def sweep(self, action_ids):
-        return []   # this fake world has no fences; the real sweep is covered end to end
+        return [self.reconcile(action_id) for action_id in action_ids]
 
     def reconcile(self, action_id):
         effect = self.db.effects.find_one({"_id": action_id})
-        found = self.targets[system_of(effect["target"])].lookup(action_id)
-        return self.gate.record_outcome(action_id, "applied" if found.applied else "rejected", found.evidence)
+        if effect["state"] != "sent":
+            return effect
+        target = self.targets[system_of(effect["target"])]
+        try:
+            found = target.lookup(action_id)
+            evidence = found.evidence if found.found else target.fence(action_id)
+            applied = found.applied if found.found else evidence.get("applied", False)
+        except (TargetTimeout, TargetUnreachable):
+            return effect
+        return self.gate.record_outcome(action_id, "applied" if applied else "rejected", evidence)

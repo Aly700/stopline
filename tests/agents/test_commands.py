@@ -69,6 +69,30 @@ def test_pending_stop_is_not_submitted_twice_and_holds_wait_for_commit(rig, monk
     assert len(calls) == 1
 
 
+def test_cut_pending_message_tells_the_operator_to_press_k_again(rig, monkeypatch):
+    stage, db, targets = rig
+    monkeypatch.setattr(stage, "_spawn", lambda *args: None)
+    run_id = stage.start_run(Mode.STOPLINE).run_id
+
+    class NotYetSent:
+        def poll(self):
+            return None
+
+        def kill(self):
+            raise AssertionError("must not kill before the target took the action")
+
+    from stopline.contract import WORKER_TWO
+    stage._processes[run_id, WORKER_TWO] = NotYetSent()
+    before = time.monotonic()
+    result = stage.cut_and_kill()
+    assert time.monotonic() - before < 2
+    expected = "Worker two has not sent yet. Press K again in a moment."
+    job = stage._jobs[run_id, "cut_and_kill"]
+    eventually(job.done)
+    assert result.pending and result.message == expected
+    assert job.result().pending and job.result().message == expected
+
+
 def test_undo_uses_the_operators_root_and_the_sender(rig, monkeypatch):
     stage, db, targets = rig
     run_id = start_held(stage, db, Mode.STOPLINE)
