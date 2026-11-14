@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checkout-api
+  namespace: checkout
+  labels:
+    app.kubernetes.io/part-of: stopline
+spec:
+  replicas: 1
+  revisionHistoryLimit: 100
+  selector:
+    matchLabels:
+      app: checkout-api
+  template:
+    metadata:
+      labels:
+        app: checkout-api
+        app.kubernetes.io/part-of: stopline
+    spec:
+      terminationGracePeriodSeconds: 0
+      containers:
+        - name: checkout
+          image: stopline/checkout:v2
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checkout-worker
+  namespace: checkout
+  labels:
+    app.kubernetes.io/part-of: stopline
+spec:
+  replicas: 1
+  revisionHistoryLimit: 100
+  selector:
+    matchLabels:
+      app: checkout-worker
+  template:
+    metadata:
+      labels:
+        app: checkout-worker
+        app.kubernetes.io/part-of: stopline
+    spec:
+      terminationGracePeriodSeconds: 0
+      containers:
+        - name: checkout
+          image: stopline/checkout:v1
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
