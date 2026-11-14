@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.lane/
+.env
+.env.*
+*.sqlite
+*.sqlite-*
+*.db
+*.png
+*.mp4
+.DS_Store
