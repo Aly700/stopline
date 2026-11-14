@@ -1,5 +1,6 @@
-import os
 """Run the isolated demonstration only when a model credential is available."""
+
+import os
 
 import json
 import subprocess
