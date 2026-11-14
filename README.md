@@ -4,6 +4,8 @@ StopLine stops a group of AI agents mid-run and accounts for every action they h
 
 Built in one day for the **Agents You Can Audit** statement at Agents in Context Toronto, a MongoDB hackathon, on 14 November 2026.
 
+![How StopLine is put together](docs/architecture.svg)
+
 ## What I found
 
 I ran the same repair job with the stop placed at every point of every step, in both worker orders: 43 schedules, on the real check in Atlas and a real router process.
@@ -25,36 +27,6 @@ I ran the same repair job with the stop placed at every point of every step, in 
 
 **`gate/` (the check and the stop).** A permission is a document: who granted it, to whom, for which tools and targets, with what limits, until when. A parent agent hands a narrower permission to a worker. MongoDB transactions conflict on writes and never on reads, so every check, hand-down and stop increments one counter on the root permission inside its transaction. Two of them can never both commit from the same snapshot; the driver retries the loser, which then sees the new state. An allowed action is claimed with a conditional update before it is sent, and the stop cancels whatever nobody claimed. The receipt covers a fixed list: everything allowed before the stop's counter value.
 
-```mermaid
-sequenceDiagram
-    participant O as Operator
-    participant A as Atlas
-    participant S as Sender
-    participant T as Target
-    O->>A: stop transaction on one permission
-    Note over A: cancel admitted actions nobody claimed
-    Note over A: increment the shared counter, keep it as the stop number
-    Note over A: revoke the permission and everything below it
-    Note over A: insert the receipt with its fixed list
-    Note over A: insert the stop entry in the audit
-    A-->>O: receipt
-    O->>S: sweep the listed actions
-    loop each listed action still marked sent
-        S->>T: look up this action id
-        alt the target has a record
-            T-->>S: its evidence
-            S->>A: record applied or rejected with that evidence
-        else the target has no record
-            S->>T: fence this action id
-            T-->>S: fence evidence
-            S->>A: record rejected with the fence as evidence
-        else the target cannot be reached
-            S->>S: record nothing, the action stays unknown
-        end
-    end
-    Note over A: receipt closes when every listed action is settled
-    Note over A: no timeout closes it
-```
 
 **`targets/` (what the agents act on).** Two Deployments in a local Kubernetes cluster, where a rollback or a restart is one patch that also writes the action's id onto the Deployment, so the cluster's own history is the evidence. A traffic router I wrote for this, with its own process, its own SQLite store and a log keyed by action id; it can be cut off in the middle of a call. A mock cluster sits behind the same interface for tests. Workers get no access to the targets. Only the sender does.
 

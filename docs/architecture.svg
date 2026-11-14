@@ -1,0 +1,151 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 870" width="1280" height="870" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+<defs><marker id="head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#232F3E"/></marker><marker id="tail" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 10 0 L 0 5 L 10 10 z" fill="#232F3E"/></marker></defs>
+<rect x="0" y="0" width="1280" height="870" fill="#FFFFFF"/>
+<text x="24" y="34" font-size="20" font-weight="700" fill="#16191F">StopLine</text>
+<text x="118" y="34" font-size="14" fill="#545B64">every action checked in MongoDB Atlas before it runs; a stop accounts for what was already started</text>
+<rect x="24" y="56" width="776" height="590" rx="4" fill="none" stroke="#5A6B86" stroke-width="2" stroke-dasharray="7 5"/>
+<rect x="24" y="56" width="155.20000000000002" height="24" fill="#5A6B86"/>
+<text x="34" y="72.5" font-size="12.5" font-weight="700" fill="#FFFFFF">Operator's machine</text>
+<rect x="300" y="96" width="480" height="300" rx="4" fill="none" stroke="#3B48CC" stroke-width="2"/>
+<rect x="300" y="96" width="244.0" height="24" fill="#3B48CC"/>
+<text x="310" y="112.5" font-size="12.5" font-weight="700" fill="#FFFFFF">StopLine program (one process)</text>
+<rect x="44" y="436" width="400" height="190" rx="4" fill="none" stroke="#8C4FFF" stroke-width="2"/>
+<rect x="44" y="436" width="221.8" height="24" fill="#8C4FFF"/>
+<text x="54" y="452.5" font-size="12.5" font-weight="700" fill="#FFFFFF">Agents (separate processes)</text>
+<rect x="464" y="436" width="316" height="190" rx="4" fill="none" stroke="#D86613" stroke-width="2"/>
+<rect x="464" y="436" width="125.60000000000001" height="24" fill="#D86613"/>
+<text x="474" y="452.5" font-size="12.5" font-weight="700" fill="#FFFFFF">Target systems</text>
+<rect x="880" y="56" width="376" height="400" rx="4" fill="none" stroke="#00684A" stroke-width="2"/>
+<rect x="880" y="56" width="221.8" height="24" fill="#00684A"/>
+<text x="890" y="72.5" font-size="12.5" font-weight="700" fill="#FFFFFF">MongoDB Atlas (replica set)</text>
+<rect x="880" y="476" width="376" height="170" rx="4" fill="none" stroke="#C7254E" stroke-width="2"/>
+<rect x="880" y="476" width="140.4" height="24" fill="#C7254E"/>
+<text x="890" y="492.5" font-size="12.5" font-weight="700" fill="#FFFFFF">Outside services</text>
+<rect x="44" y="110" width="216" height="62" rx="6" fill="#FFFFFF" stroke="#232F3E" stroke-width="1.5"/>
+<rect x="54" y="128.0" width="26" height="26" rx="4" fill="#5A6B86"/>
+<text x="67" y="145.5" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">UI</text>
+<text x="90" y="138.0" font-size="14" font-weight="700" fill="#16191F">Operator's console</text>
+<text x="90" y="156.0" font-size="12" fill="#545B64">browser, live over SSE</text>
+<rect x="320" y="136" width="210" height="54" rx="6" fill="#FFFFFF" stroke="#232F3E" stroke-width="1.5"/>
+<rect x="330" y="150.0" width="26" height="26" rx="4" fill="#3B48CC"/>
+<text x="343" y="167.5" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">P</text>
+<text x="366" y="160.0" font-size="14" font-weight="700" fill="#16191F">Page server</text>
+<text x="366" y="178.0" font-size="12" fill="#545B64">fed by change streams</text>
+<rect x="550" y="136" width="210" height="54" rx="6" fill="#FFFFFF" stroke="#232F3E" stroke-width="1.5"/>
+<rect x="560" y="150.0" width="26" height="26" rx="4" fill="#3B48CC"/>
+<text x="573" y="167.5" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">S</text>
+<text x="596" y="160.0" font-size="14" font-weight="700" fill="#16191F">Stage</text>
+<text x="596" y="178.0" font-size="12" fill="#545B64">the keys: start, stop, undo</text>
+<rect x="320" y="214" width="440" height="66" rx="6" fill="#EEF0FB" stroke="#3B48CC" stroke-width="1.5"/>
+<rect x="330" y="234.0" width="26" height="26" rx="4" fill="#3B48CC"/>
+<text x="343" y="251.5" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">G</text>
+<text x="366" y="244.0" font-size="14" font-weight="700" fill="#16191F">Gate</text>
+<text x="366" y="262.0" font-size="12" fill="#545B64">the check, the stop, receipts, undo</text>
+<rect x="320" y="306" width="440" height="66" rx="6" fill="#FFFFFF" stroke="#232F3E" stroke-width="1.5"/>
+<rect x="330" y="326.0" width="26" height="26" rx="4" fill="#3B48CC"/>
+<text x="343" y="343.5" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">&#8594;</text>
+<text x="366" y="336.0" font-size="14" font-weight="700" fill="#16191F">Sender</text>
+<text x="366" y="354.0" font-size="12" fill="#545B64">the only code that calls a target: claim, send, look up, fence</text>
+<rect x="64" y="476" width="112" height="56" rx="6" fill="#FFFFFF" stroke="#232F3E" stroke-width="1.5"/>
+<text x="78" y="501.0" font-size="14" font-weight="700" fill="#16191F">Repair</text>
+<text x="78" y="519.0" font-size="12" fill="#545B64">agent</text>
+<rect x="188" y="476" width="112" height="56" rx="6" fill="#FFFFFF" stroke="#232F3E" stroke-width="1.5"/>
+<text x="202" y="501.0" font-size="14" font-weight="700" fill="#16191F">Worker</text>
+<text x="202" y="519.0" font-size="12" fill="#545B64">one</text>
+<rect x="312" y="476" width="112" height="56" rx="6" fill="#FFFFFF" stroke="#232F3E" stroke-width="1.5"/>
+<text x="326" y="501.0" font-size="14" font-weight="700" fill="#16191F">Worker</text>
+<text x="326" y="519.0" font-size="12" fill="#545B64">two</text>
+<rect x="64" y="548" width="360" height="56" rx="6" fill="#FFFFFF" stroke="#232F3E" stroke-width="1.5"/>
+<rect x="74" y="563.0" width="26" height="26" rx="4" fill="#8C4FFF"/>
+<text x="87" y="580.5" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">A</text>
+<text x="110" y="573.0" font-size="14" font-weight="700" fill="#16191F">Live agent</text>
+<text x="110" y="591.0" font-size="12" fill="#545B64">Deep Agents: plans and delegates on its own</text>
+<rect x="484" y="476" width="276" height="60" rx="6" fill="#FFFFFF" stroke="#232F3E" stroke-width="1.5"/>
+<rect x="494" y="493.0" width="26" height="26" rx="4" fill="#D86613"/>
+<text x="507" y="510.5" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">K</text>
+<text x="530" y="503.0" font-size="14" font-weight="700" fill="#16191F">Kubernetes cluster (kind)</text>
+<text x="530" y="521.0" font-size="12" fill="#545B64">two Deployments: api and worker</text>
+<rect x="484" y="548" width="276" height="60" rx="6" fill="#FFFFFF" stroke="#232F3E" stroke-width="1.5"/>
+<rect x="494" y="565.0" width="26" height="26" rx="4" fill="#D86613"/>
+<text x="507" y="582.5" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">R</text>
+<text x="530" y="575.0" font-size="14" font-weight="700" fill="#16191F">Traffic router</text>
+<text x="530" y="593.0" font-size="12" fill="#545B64">own process, own SQLite log</text>
+<rect x="900" y="96" width="336" height="56" rx="6" fill="#FFFFFF" stroke="#232F3E" stroke-width="1.5"/>
+<rect x="910" y="111.0" width="26" height="26" rx="4" fill="#00684A"/>
+<text x="923" y="128.5" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">DB</text>
+<text x="946" y="121.0" font-size="14" font-weight="700" fill="#16191F">permissions</text>
+<text x="946" y="139.0" font-size="12" fill="#545B64">who may do what; one shared counter</text>
+<rect x="900" y="164" width="336" height="56" rx="6" fill="#FFFFFF" stroke="#232F3E" stroke-width="1.5"/>
+<rect x="910" y="179.0" width="26" height="26" rx="4" fill="#00684A"/>
+<text x="923" y="196.5" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">DB</text>
+<text x="946" y="189.0" font-size="14" font-weight="700" fill="#16191F">actions</text>
+<text x="946" y="207.0" font-size="12" fill="#545B64">admitted, sent, then a final state</text>
+<rect x="900" y="232" width="336" height="56" rx="6" fill="#FFFFFF" stroke="#232F3E" stroke-width="1.5"/>
+<rect x="910" y="247.0" width="26" height="26" rx="4" fill="#00684A"/>
+<text x="923" y="264.5" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">DB</text>
+<text x="946" y="257.0" font-size="14" font-weight="700" fill="#16191F">audit</text>
+<text x="946" y="275.0" font-size="12" fill="#545B64">validated; one decision per counter value</text>
+<rect x="900" y="300" width="336" height="56" rx="6" fill="#FFFFFF" stroke="#232F3E" stroke-width="1.5"/>
+<rect x="910" y="315.0" width="26" height="26" rx="4" fill="#00684A"/>
+<text x="923" y="332.5" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">DB</text>
+<text x="946" y="325.0" font-size="14" font-weight="700" fill="#16191F">receipts</text>
+<text x="946" y="343.0" font-size="12" fill="#545B64">a fixed list; closes only on evidence</text>
+<rect x="900" y="372" width="160" height="56" rx="6" fill="#FFFFFF" stroke="#232F3E" stroke-width="1.5"/>
+<rect x="910" y="387.0" width="26" height="26" rx="4" fill="#00684A"/>
+<text x="923" y="404.5" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">~</text>
+<text x="946" y="397.0" font-size="14" font-weight="700" fill="#16191F">Change</text>
+<text x="946" y="415.0" font-size="12" fill="#545B64">streams</text>
+<rect x="1076" y="372" width="160" height="56" rx="6" fill="#FFFFFF" stroke="#232F3E" stroke-width="1.5"/>
+<rect x="1086" y="387.0" width="26" height="26" rx="4" fill="#00684A"/>
+<text x="1099" y="404.5" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">V</text>
+<text x="1122" y="397.0" font-size="14" font-weight="700" fill="#16191F">Vector</text>
+<text x="1122" y="415.0" font-size="12" fill="#545B64">Search</text>
+<text x="900" y="526" font-size="13" font-weight="700" fill="#16191F">Gemini</text>
+<text x="988" y="526" font-size="12" fill="#545B64">plans the repair; the live agent's model</text>
+<text x="900" y="556" font-size="13" font-weight="700" fill="#16191F">LangSmith</text>
+<text x="988" y="556" font-size="12" fill="#545B64">the live agent's trace</text>
+<text x="900" y="586" font-size="13" font-weight="700" fill="#16191F">Voyage AI</text>
+<text x="988" y="586" font-size="12" fill="#545B64">embeddings for asking the audit</text>
+<text x="900" y="616" font-size="13" font-weight="700" fill="#16191F">ElevenLabs</text>
+<text x="988" y="616" font-size="12" fill="#545B64">speaks the receipt</text>
+<path d="M 260 141 L 320 158" fill="none" stroke="#232F3E" stroke-width="1.8" marker-end="url(#head)" marker-start="url(#tail)"/>
+<path d="M 120 476 L 120 247 L 320 247" fill="none" stroke="#232F3E" stroke-width="1.8" marker-end="url(#head)"/>
+<circle cx="120" cy="360" r="11" fill="#232F3E" stroke="#FFFFFF" stroke-width="2"/><text x="120" y="364.5" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">1</text>
+<text x="138" y="364" text-anchor="start" font-size="12" font-weight="500" fill="#16191F" stroke="#FFFFFF" stroke-width="4" paint-order="stroke">ask to act</text>
+<path d="M 760 247 L 900 247" fill="none" stroke="#232F3E" stroke-width="1.8" marker-end="url(#head)" marker-start="url(#tail)"/>
+<circle cx="830" cy="247" r="11" fill="#232F3E" stroke="#FFFFFF" stroke-width="2"/><text x="830" y="251.5" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">2</text>
+<text x="830" y="226" text-anchor="middle" font-size="12" font-weight="500" fill="#16191F" stroke="#FFFFFF" stroke-width="4" paint-order="stroke">one transaction</text>
+<path d="M 244 476 L 244 339 L 320 339" fill="none" stroke="#232F3E" stroke-width="1.8" marker-end="url(#head)"/>
+<circle cx="244" cy="420" r="11" fill="#232F3E" stroke="#FFFFFF" stroke-width="2"/><text x="244" y="424.5" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">3</text>
+<text x="262" y="424" text-anchor="start" font-size="12" font-weight="500" fill="#16191F" stroke="#FFFFFF" stroke-width="4" paint-order="stroke">claim, then send</text>
+<path d="M 622 372 L 622 476" fill="none" stroke="#232F3E" stroke-width="1.8" marker-end="url(#head)" marker-start="url(#tail)"/>
+<circle cx="622" cy="412" r="11" fill="#232F3E" stroke="#FFFFFF" stroke-width="2"/><text x="622" y="416.5" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">4</text>
+<text x="640" y="416" text-anchor="start" font-size="12" font-weight="500" fill="#16191F" stroke="#FFFFFF" stroke-width="4" paint-order="stroke">apply once</text>
+<path d="M 760 339 L 900 339" fill="none" stroke="#232F3E" stroke-width="1.8" marker-end="url(#head)"/>
+<circle cx="830" cy="339" r="11" fill="#232F3E" stroke="#FFFFFF" stroke-width="2"/><text x="830" y="343.5" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">5</text>
+<text x="830" y="366" text-anchor="middle" font-size="12" font-weight="500" fill="#16191F" stroke="#FFFFFF" stroke-width="4" paint-order="stroke">outcome</text>
+<path d="M 655 190 L 655 214" fill="none" stroke="#232F3E" stroke-width="1.8" marker-end="url(#head)"/>
+<text x="667" y="207" text-anchor="start" font-size="12" font-weight="700" fill="#C7254E" stroke="#FFFFFF" stroke-width="4" paint-order="stroke">stop</text>
+<rect x="24" y="668" width="1232" height="180" rx="6" fill="#F7F8FA" stroke="#D5DBDB"/>
+<text x="44" y="696" font-size="14" font-weight="700" fill="#16191F">One action</text>
+<circle cx="54" cy="717.5" r="9" fill="#232F3E"/><text x="54" y="722" text-anchor="middle" font-size="11.5" font-weight="700" fill="#FFFFFF">1</text>
+<text x="74" y="722" font-size="13" fill="#16191F">An agent asks the gate to act.</text>
+<circle cx="54" cy="740.5" r="9" fill="#232F3E"/><text x="54" y="745" text-anchor="middle" font-size="11.5" font-weight="700" fill="#FFFFFF">2</text>
+<text x="74" y="745" font-size="13" fill="#16191F">One transaction: counter, permission check, the action and its audit entry.</text>
+<circle cx="54" cy="763.5" r="9" fill="#232F3E"/><text x="54" y="768" text-anchor="middle" font-size="11.5" font-weight="700" fill="#FFFFFF">3</text>
+<text x="74" y="768" font-size="13" fill="#16191F">The worker asks the sender to claim the action, then send it.</text>
+<circle cx="54" cy="786.5" r="9" fill="#232F3E"/><text x="54" y="791" text-anchor="middle" font-size="11.5" font-weight="700" fill="#FFFFFF">4</text>
+<text x="74" y="791" font-size="13" fill="#16191F">The target applies it once, keyed by action id, and returns evidence.</text>
+<circle cx="54" cy="809.5" r="9" fill="#232F3E"/><text x="54" y="814" text-anchor="middle" font-size="11.5" font-weight="700" fill="#FFFFFF">5</text>
+<text x="74" y="814" font-size="13" fill="#16191F">The outcome is recorded with that evidence.</text>
+<line x1="640" y1="684" x2="640" y2="832" stroke="#D5DBDB"/>
+<text x="664" y="696" font-size="14" font-weight="700" fill="#16191F">A stop</text>
+<circle cx="674" cy="717.5" r="9" fill="#C7254E"/><text x="674" y="722" text-anchor="middle" font-size="11.5" font-weight="700" fill="#FFFFFF">a</text>
+<text x="694" y="722" font-size="13" fill="#16191F">One transaction revokes the permission and everything below it,</text>
+<text x="694" y="745" font-size="13" fill="#16191F">cancels what was allowed but not claimed, and writes the receipt.</text>
+<circle cx="674" cy="763.5" r="9" fill="#C7254E"/><text x="674" y="768" text-anchor="middle" font-size="11.5" font-weight="700" fill="#FFFFFF">b</text>
+<text x="694" y="768" font-size="13" fill="#16191F">The sender asks each target about claimed work with no answer.</text>
+<text x="694" y="791" font-size="13" fill="#16191F">What never arrived is fenced there. An unreachable target stays unknown.</text>
+<circle cx="674" cy="809.5" r="9" fill="#C7254E"/><text x="674" y="814" text-anchor="middle" font-size="11.5" font-weight="700" fill="#FFFFFF">c</text>
+<text x="694" y="814" font-size="13" fill="#16191F">The receipt closes only on evidence. Waiting never closes it.</text>
+</svg>
