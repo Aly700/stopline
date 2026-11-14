@@ -8,9 +8,9 @@ import re
 
 
 PROVIDERS = (
-    ('google_genai', ('GEMINI_API_KEY', 'GOOGLE_API_KEY'), 'gemini-3.8-flash', 'langchain_google_genai'),
-    ('anthropic', ('ANTHROPIC_API_KEY',), 'claude-haiku-4-5', 'langchain_anthropic'),
-    ('openai', ('OPENAI_API_KEY',), 'gpt-5-mini', 'langchain_openai'),
+    ('google_genai', ('GEMINI_API_KEY', 'GOOGLE_API_KEY'), 'gemini-3.1-flash-lite', 'langchain_google_genai'),
+    ('anthropic', ('ANTHROPIC_API_KEY',), 'claude-haiku-5-5', 'langchain_anthropic'),
+    ('openai', ('OPENAI_API_KEY',), 'gpt-6-luna', 'langchain_openai'),
 )
 
 

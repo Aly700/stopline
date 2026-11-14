@@ -34,3 +34,20 @@ def test_missing_packages_creates_nothing(monkeypatch):
     assert not result.ok
     assert result.message == 'Install the agent extra to run a language model.'
     assert not db.data
+
+
+def test_start_returns_within_two_seconds_during_slow_database_setup(monkeypatch):
+    import time
+    from stopline.deep import config, runtime, start_agent_run
+    monkeypatch.setattr(config, 'select_model', lambda: config.ModelConfig('google_genai', 'fake', 'test-key'))
+    monkeypatch.setattr(config, 'packages_available', lambda _: True)
+    monkeypatch.setattr(config, 'read_setting', lambda _: '')
+    def slow_records(*args):
+        time.sleep(2.2)
+        raise RuntimeError('private connection details')
+    monkeypatch.setattr(runtime, 'create_records', slow_records)
+    db = Database({}, threading.RLock())
+    started = time.monotonic()
+    result = start_agent_run(db, None, None, {}, cluster='mock')
+    assert time.monotonic() - started < 2
+    assert result.ok and result.pending and result.run_id

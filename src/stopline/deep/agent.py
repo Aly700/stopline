@@ -1,8 +1,9 @@
 """A Deep Agents supervisor and two restricted LangChain subagents."""
 
 import asyncio
+import time
 
-from stopline.contract import WORKER_ONE, WORKER_TWO
+from stopline.contract import REPAIR_AGENT, WORKER_ONE, WORKER_TWO
 from .runtime import RunEnded
 
 MODEL_SECONDS = 20
@@ -32,7 +33,7 @@ def guard(run, allowed, prompt):
                 run.check()
                 run.model_calls += 1
                 try:
-                    return await asyncio.wait_for(handler(request), timeout=min(MODEL_SECONDS, run.deadline - __import__('time').monotonic()))
+                    return await asyncio.wait_for(handler(request), timeout=min(MODEL_SECONDS, run.deadline - time.monotonic()))
                 except Exception as error:
                     if is_rate_limit(error) and attempt < 2:
                         await asyncio.sleep(0.25 * (attempt + 1))
@@ -43,17 +44,19 @@ def guard(run, allowed, prompt):
                     raise RunEnded(sentence) from None
 
         async def awrap_tool_call(self, request, handler):
-            run.check()
+            await asyncio.to_thread(run.count_tool)
             name = request.tool_call['name']
             if name not in allowed:
                 run.halt('Stopped because the model requested an unavailable tool.')
                 raise RunEnded(run.reason)
             if name == 'task':
-                run.count_tool()
                 worker = request.tool_call['args'].get('subagent_type')
                 if worker not in ('cluster-worker', 'traffic-worker'):
                     run.halt('Stopped because the requested worker is unavailable.')
                     raise RunEnded(run.reason)
+                sentence = ('Delegated cluster work to Worker one.' if worker == 'cluster-worker'
+                            else 'Delegated traffic work to Worker two.')
+                await asyncio.to_thread(run.note, REPAIR_AGENT, sentence)
             return await handler(request)
 
     return Guard()
@@ -67,21 +70,23 @@ def build_agent(run, model, *, incident=None, worker_models=None):
     @tool
     async def rollback_deployment(name: str) -> str:
         """Roll back the named checkout deployment to the last good version v1."""
-        return await asyncio.to_thread(run.act, WORKER_ONE, 'rollback', f'cluster/{name}', {'to_version': 'v1'})
+        return await asyncio.to_thread(run.act, WORKER_ONE, 'rollback', f'cluster/{name}', {'to_version': 'v1'}, counted=True)
 
     @tool
     async def restart_deployment(name: str) -> str:
         """Restart the named checkout deployment after the rollback."""
-        return await asyncio.to_thread(run.act, WORKER_ONE, 'restart', f'cluster/{name}', {})
+        return await asyncio.to_thread(run.act, WORKER_ONE, 'restart', f'cluster/{name}', {}, counted=True)
 
     @tool
     async def shift_traffic(percent: int) -> str:
         """Set region B's traffic percentage, moving gradually up to 50 percent."""
-        return await asyncio.to_thread(run.act, WORKER_TWO, 'shift_traffic', 'router/region-b', {'percent': percent})
+        return await asyncio.to_thread(run.act, WORKER_TWO, 'shift_traffic', 'router/region-b', {'percent': percent}, counted=True)
 
     cluster_model, traffic_model = worker_models or (model, model)
-    cluster_prompt = RULES + ' You are Worker one. Repair the cluster: roll back checkout-api to v1, then restart checkout-worker.'
-    traffic_prompt = RULES + ' You are Worker two. Shift traffic to region B gradually: first 25%, then 50%, checking each answer.'
+    cluster_prompt = (RULES + ' You are Worker one. Choose cluster actions for the delegated incident. '
+                      'If a rollback is needed, restart checkout-worker only after it succeeds.')
+    traffic_prompt = (RULES + ' You are Worker two. Choose gradual traffic shifts for the delegated incident, '
+                      'up to 50% to region B. Check each answer before the next shift.')
     subagents = []
     for name, description, worker_model, tools, prompt in (
         ('cluster-worker', 'Worker one repairs checkout deployments.', cluster_model,
@@ -100,12 +105,13 @@ def build_agent(run, model, *, incident=None, worker_models=None):
                              middleware=[guard(run, {'task'}, prompt)])
 
 
-async def invoke_agent(run, graph, *, callbacks=None):
+async def invoke_agent(run, graph, *, callbacks=None, trace_id=None):
     try:
-        async with asyncio.timeout(max(0, run.deadline - __import__('time').monotonic())):
+        async with asyncio.timeout(max(0, run.deadline - time.monotonic())):
             await graph.ainvoke({'messages': [{'role': 'user', 'content': 'Repair the incident using both workers.'}]},
                                config={'run_name': run.run_id, 'tags': [run.run_id],
-                                       'recursion_limit': 60, 'callbacks': callbacks or []})
+                                       'recursion_limit': 60, 'callbacks': callbacks or [],
+                                       **({'run_id': trace_id} if trace_id else {})})
     except RunEnded:
         pass
     except TimeoutError:

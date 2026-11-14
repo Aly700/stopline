@@ -80,6 +80,7 @@ class Run:
         self.lock = threading.RLock()
         self.halted = threading.Event()
         self.finished = threading.Event()
+        self.finalized = False
         self.tool_calls = self.model_calls = 0
         self.reason = ''
         self.last_notes = {}
@@ -125,10 +126,12 @@ class Run:
         self.note(principal, self.reason, status=TaskStatus.STOPPED)
         return f'REFUSED: {reason}. Do not retry. Report back.'
 
-    def act(self, principal, tool, target, args):
+    def act(self, principal, tool, target, args, *, counted=False):
         # One action at a time across both subagents, including admission and send.
         with self.lock:
-            self.count_tool()
+            self.check()
+            if not counted:
+                self.count_tool()
             position = self.counters[principal]
             self.counters[principal] += 1
             task = self.db.tasks.find_one({'_id': f'{self.run_id}:{principal}'})
@@ -171,7 +174,7 @@ class Run:
             return f'{outcome} Evidence: {json.dumps(safe, sort_keys=True)}'
 
     def finish(self):
-        if self.finished.is_set():
+        if self.finalized:
             return
         self.finished.set()
         status = TaskStatus.STOPPED if self.halted.is_set() else TaskStatus.DONE
@@ -182,9 +185,10 @@ class Run:
         note = self.reason or ('The repair run stopped.' if status == TaskStatus.STOPPED else 'Finished the delegated repair.')
         for principal in PRINCIPALS:
             previous = self.last_notes.get(principal, '')
-            sentence = previous if previous.startswith('Refused:') else f'{previous} {note}'.strip()
+            sentence = previous if previous.startswith('Refused:') or previous.endswith(note) else f'{previous} {note}'.strip()
             self.note(principal, sentence, status=status, held_at=None)
         self.db.runs.update_one({'_id': self.run_id}, {'$set': {
             'status': str(status), 'model_calls': self.model_calls, 'tool_calls': self.tool_calls,
             'seconds': round(time.monotonic() - self.started, 3),
         }})
+        self.finalized = True
