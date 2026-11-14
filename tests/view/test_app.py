@@ -53,7 +53,7 @@ def test_demo_sequence_and_receipt(rig):
     state = client.get('/api/state').json()
     assert state['stop']['seq'] == 7
     assert len(state['receipt']['rows']) == 4
-    assert sorted(r['outcome'] for r in state['receipt']['rows']) == ['blocked', 'blocked', 'completed', 'unknown']
+    assert sorted(r['outcome'] for r in state['receipt']['rows']) == ['blocked', 'completed', 'refused', 'unknown']
     assert state['receipt']['status'] == 'open'
     assert all(r['chain'] for r in state['receipt']['rows'])
     before = state['receipt']

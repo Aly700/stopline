@@ -53,6 +53,7 @@ function actionButton(row, receipt = false) {
     if (row.ran_after_stop) notes.push(`started after the stop · ${row.target_at_epoch != null ? clock(row.target_at_epoch * 1000) + ' target clock' : 'target clock pending'}`);
     if (row.outcome === 'unknown') notes.push('Sent · no answer');
     if (row.kind === 'refusal') notes.push(refusalText(row));
+    if (row.kind === 'action' && row.outcome === 'blocked') notes.push(row.refusal ? `Cancelled before it was sent · ${refusalText(row.refusal)}` : 'Cancelled before it was sent');
     if (row.held) notes.push('held by test schedule');
   }
   if (row.reconciled) notes.push('asked the router by action id · applied');

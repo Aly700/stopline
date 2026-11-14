@@ -81,9 +81,16 @@ def read_state(db):
     held = {action_id_for(run['_id'], item['principal'], item['step']) for item in run.get('holds', [])}
     effects = {row['_id']: row for row in records['effects']}
     rows = [action_row(row, run, permissions, held) for row in effects.values()]
-    refusals = [refusal_row(row, run, permissions, held) for row in records['audit']
-                if row['kind'] == 'deny' and row.get('action_id')]
-    rows.extend(refusals)
+    by_action = {row['action_id']: row for row in rows}
+    for entry in records['audit']:
+        if entry['kind'] != 'deny' or not entry.get('action_id'):
+            continue
+        existing = by_action.get(entry['action_id'])
+        if existing is None:
+            rows.append(refusal_row(entry, run, permissions, held))
+        elif existing['outcome'] == 'blocked':
+            # A refused claim on an action that already has its own row: say why on that row.
+            existing['refusal'] = dict(reason=entry['reason'], detail=entry.get('detail') or {})
     receipts = sorted(records['receipts'], key=lambda row: row['stop_seq'])
     receipt = next((row for row in receipts if row['_id'] == run.get('receipt_id')), receipts[-1] if receipts else None)
     stop = (dict(seq=receipt['stop_seq'], at=receipt['stopped_at'], by=receipt['stopped_by']) if receipt else
@@ -113,8 +120,7 @@ def read_state(db):
                 continue
             row = refusal_row(entry, run, permissions, held)
             if row['action_id'] not in receipt_rows:
-                row['outcome'] = 'blocked'
-                receipt_rows[row['action_id']] = row
+                receipt_rows[row['action_id']] = row   # shown as refused, the same word as in the actions list
             elif receipt_rows[row['action_id']]['outcome'] == 'blocked':
                 receipt_rows[row['action_id']].update(reason=entry['reason'], detail=entry['detail'])
         # Missing covered records are visibly unknown; never infer closure in this layer.
