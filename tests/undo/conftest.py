@@ -17,6 +17,11 @@ from stopline.contract import (
 )
 
 
+class Scenario(SimpleNamespace):
+    def __repr__(self):
+        return f"Scenario(action_id={self.action.action_id!r})"
+
+
 def as_action(effect):
     return Action(**{
         field.name: effect["_id"] if field.name == "action_id" else effect[field.name]
@@ -209,6 +214,10 @@ class FakeSender:
 def db():
     database = stopline_db.test_database("undo")
     try:
+        database.policies.insert_one({
+            "_id": 1, "text": "test policy", "hash": "test-policy",
+            "created_at": datetime.now(timezone.utc),
+        })
         yield database
     finally:
         stopline_db.drop_test_database(database)
@@ -252,5 +261,5 @@ def scenario(db):
         "revoked": [repair, worker], "covered": [action.action_id],
         "status": "closed", "closed_at": now,
     })
-    return SimpleNamespace(db=db, gate=gate, router=router, targets=targets, sender=sender,
-                           action=action, root=root, repair=repair, worker=worker, receipt_id=receipt_id)
+    return Scenario(db=db, gate=gate, router=router, targets=targets, sender=sender,
+                    action=action, root=root, repair=repair, worker=worker, receipt_id=receipt_id)
