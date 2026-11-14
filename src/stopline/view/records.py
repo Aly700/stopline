@@ -44,6 +44,17 @@ def action_row(effect, run, permissions, held):
     row = dict(effect, action_id=effect['_id'], kind='action', outcome=OUTCOMES.get(state, 'unknown'),
                held=effect['_id'] in held, at=effect.get('admitted_at'), seq=effect.get('admitted_seq'))
     row['chain'] = [permissions[mid] for mid in effect.get('chain', []) if mid in permissions]
+    evidence = effect.get('evidence')
+    target_time = (evidence or {}).get('at_epoch')
+    boundary = run.get('stop_at_local')
+    started = target_time if target_time is not None else epoch(effect.get('admitted_at'))
+    row['target_at_epoch'] = target_time
+    row['ran_after_stop'] = bool(
+        run['mode'] in ('flag', 'fixed') and boundary is not None
+        and (target_time is not None or not evidence) and started > boundary)
+    if row['ran_after_stop']:
+        row['outcome'] = 'RAN AFTER STOP'
+    row['reconciled'] = False
     return row
 
 
@@ -83,9 +94,8 @@ def read_state(db):
             row['_order'] = (row.get('seq') or 0, epoch(row.get('at')), row['action_id'])
         else:
             target_time = (row.get('evidence') or {}).get('at_epoch')
-            when = target_time or epoch(row.get('finished_at') or row.get('at'))
-            boundary = run.get('stop_at_local') or epoch(run.get('stop_at'))
-            row['after_stop'] = bool(stop and when >= boundary)
+            when = target_time if target_time is not None else epoch(row.get('at'))
+            row['after_stop'] = row.get('ran_after_stop', False)
             row['_order'] = (when, row['action_id'])
     rows.sort(key=lambda row: row['_order'])
     for row in rows:
@@ -113,6 +123,19 @@ def read_state(db):
                 receipt_rows[aid] = dict(action_id=aid, tool='action', target=aid, args={}, principal='',
                     outcome='unknown', chain=[], state=None, evidence=None, undo=None)
         receipt_view = dict(receipt, rows=list(receipt_rows.values()))
+    # The stage saves this note only after it has looked up outstanding sends.
+    # Pair it with target evidence and the stored finish time; a closed receipt
+    # alone does not establish that an action was reconciled.
+    checked_router = any(task.get('note') == 'Restored the router and checked the outstanding sends.'
+                         for task in records['tasks'])
+    if receipt and checked_router:
+        for row in rows + receipt_view['rows']:
+            effect = effects.get(row['action_id'], {})
+            evidence = effect.get('evidence') or {}
+            row['reconciled'] = bool(
+                row['action_id'] in receipt['covered'] and effect.get('state') == 'applied'
+                and evidence.get('system') == 'router' and evidence.get('action_id') == row['action_id']
+                and epoch(effect.get('finished_at')) > epoch(receipt['stopped_at']))
     return serial(dict(run=run, rows=rows[-8:], omitted_rows=max(0, len(rows) - 8), stop=stop,
                        receipt=receipt_view, workers=records['tasks'], permissions=list(permissions.values())))
 

@@ -13,6 +13,8 @@ from .feed import ChangeFeed
 from .records import read_chain, read_state, serial
 
 ASSETS = Path(__file__).parent
+OPERATIONS = {'1': 'start_run', '2': 'start_run', 'S': 'press_stop', 'K': 'cut_and_kill',
+              'W': 'resume_worker', 'R': 'restore_and_reconcile', 'U': 'undo', 'V': 'validation_rejection'}
 
 
 def create_app(db, stage, targets, numbers=None):
@@ -119,6 +121,21 @@ def create_app(db, stage, targets, numbers=None):
             return serial(asdict(commands[key]()))
         except Exception:
             return JSONResponse({'ok': False, 'pending': False, 'message': 'Request failed. Check the confirmed state before trying again.'}, status_code=503)
+
+    @app.get('/api/operation/{key}')
+    def operation(key: str):
+        name = OPERATIONS.get(key.upper())
+        if name is None:
+            raise HTTPException(404, 'Unknown key.')
+        try:
+            snapshot = stage.status()
+            if not snapshot.get('pending'):
+                result = snapshot.get('operations', {}).get(name)
+                if result is not None:
+                    return serial(result)
+        except Exception:
+            pass
+        return {'pending': True, 'message': 'pending'}
 
     @app.get('/api/chain/{action_id}')
     def chain(action_id: str):

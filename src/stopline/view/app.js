@@ -14,11 +14,16 @@ let pending = null;
 let latestKey = '';
 let targetLoading = false;
 let targetSignature = '';
+let operationLoading = false;
+let validationTimer;
+const targetValues = new Map();
+const targetHighlights = new Map();
 const names = {'person:operator': 'Operator', 'agent:repair': 'Repair agent', 'agent:worker-1': 'Worker one', 'agent:worker-2': 'Worker two'};
 const person = (name) => names[name] || name || 'Unknown';
 const clock = (value) => value ? new Date(value).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false}) : '—';
 function title(row) {
   const target = (row.target || '').split('/').pop();
+  if (row.reverses && row.tool === 'shift_traffic') return `Undo: shift region B back to ${row.args?.percent ?? '?'}%`;
   if (row.reverses && row.tool === 'rollback') return `Undo rollback of ${target}`;
   if (row.tool === 'rollback') return `Roll back ${target}`;
   if (row.tool === 'restart') return `Restart ${target}`;
@@ -39,16 +44,18 @@ function actionButton(row, receipt = false) {
   if (!receipt) label.append(make('span', person(row.principal), 'who'));
   label.append(document.createTextNode(title(row)));
   node.append(label);
-  const outcome = make('span', row.outcome, `row-outcome ${row.outcome.replaceAll(' ', '-')}`);
+  const outcome = make('span', row.outcome, `row-outcome ${row.outcome.toLowerCase().replaceAll(' ', '-')}`);
   if (row.undo) outcome.append(make('span', {no_undo:'no undo', undone:'undone', undo_unknown:'undo unknown'}[row.undo] || row.undo, 'undo-mark'));
   node.append(outcome);
   const notes = [];
   if (receipt) notes.push(chainText(row.chain));
   else {
+    if (row.ran_after_stop) notes.push(`started after the stop · ${row.target_at_epoch != null ? clock(row.target_at_epoch * 1000) + ' target clock' : 'target clock pending'}`);
     if (row.outcome === 'unknown') notes.push('Sent · no answer');
     if (row.kind === 'refusal') notes.push(refusalText(row));
     if (row.held) notes.push('held by test schedule');
   }
+  if (row.reconciled) notes.push('asked the router by action id · applied');
   if (notes.length) node.append(make('span', notes.join(' · '), 'row-detail'));
   node.addEventListener('click', () => showChain(row.action_id));
   return node;
@@ -62,7 +69,7 @@ function render(state) {
   current = state;
   const run = state.run;
   $('mode').textContent = ({flag:'STOP FLAG', stopline:'STOPLINE', fixed:'FIXED RULES'})[run?.mode] || 'READY';
-  $('run-label').textContent = run ? (run.mode === 'stopline' ? 'Permission checked before every action' : 'Permission checked before the stop') : 'Press 1 to begin';
+  $('run-label').textContent = ({flag:'Workers check a stop flag before each step', fixed:'Rules read once when the run starts', stopline:'Permission checked before every action'})[run?.mode] || 'Press 1 to begin';
   $('context').textContent = `${run?.cluster === 'mock' ? 'Mock cluster · ' : ''}timing controlled · router built for this test`;
   const repair = state.permissions.find(permission => permission.holder === 'agent:repair');
   const workers = state.permissions.filter(permission => ['agent:worker-1', 'agent:worker-2'].includes(permission.holder));
@@ -84,14 +91,21 @@ function render(state) {
   const omitted = state.omitted_rows + state.rows.length - visibleRows.length;
   $('omitted').textContent = omitted ? `${omitted} earlier rows · showing the latest ${visibleRows.length}` : '';
   const receipt = state.receipt;
-  $('receipt').hidden = !receipt;
+  const baseline = ['flag', 'fixed'].includes(run?.mode);
+  $('receipt').hidden = !receipt && !baseline;
+  $('receipt').classList.toggle('no-receipt', baseline && !receipt);
+  if (baseline && !receipt) {
+    const note = make('p', 'No receipt. A stop flag keeps no record of what was already started.');
+    note.id = 'receipt-title';
+    $('receipt').replaceChildren(note);
+  }
   if (receipt) {
     const heading = make('div', null, 'receipt-heading');
     const name = make('h2', 'The receipt'); name.id = 'receipt-title';
     heading.append(name, make('p', `Stopped by ${person(receipt.stopped_by)} · ${clock(receipt.stopped_at)}`), make('span', receipt.status.toUpperCase(), `receipt-state ${receipt.status === 'open' ? 'unknown' : 'completed'}`));
     $('receipt').replaceChildren(heading, ...receipt.rows.map(row => actionButton(row, true)));
   }
-  confirmPending(state);
+  if (pending) pollOperation();
 }
 async function refresh() {
   if (loading) { refreshAgain = true; return; }
@@ -109,7 +123,23 @@ async function refresh() {
     if (refreshAgain) { refreshAgain = false; setTimeout(refresh, 100); }
   }
 }
-function definition(list, label, value) { list.append(make('dt', label), make('dd', value ?? '—')); }
+function targetValue(tag, key, value) {
+  const text = String(value ?? '—');
+  const now = Date.now();
+  if (targetValues.has(key) && targetValues.get(key) !== text) targetHighlights.set(key, now + 1000);
+  targetValues.set(key, text);
+  const node = make(tag, text);
+  node.dataset.targetValue = key;
+  const remaining = (targetHighlights.get(key) || 0) - now;
+  if (remaining > 0) {
+    node.classList.add('target-changed');
+    setTimeout(() => node.classList.remove('target-changed'), remaining);
+  }
+  return node;
+}
+function definition(list, label, value, key) {
+  list.append(make('dt', label), targetValue('dd', key, value));
+}
 async function pollTargets() {
   if (targetLoading) return;
   targetLoading = true;
@@ -125,22 +155,28 @@ async function pollTargets() {
       const state = states[name] || {reachable:false};
       const section = make('section', null, `system ${state.reachable ? '' : 'unreachable'}`);
       const heading = make('h3', name === 'cluster' ? 'Cluster' : 'Router', 'system-heading');
-      heading.append(make('span', state.reachable ? 'reachable' : 'unreachable'));
+      heading.append(targetValue('span', name + '/reachable', state.reachable ? 'reachable' : 'unreachable'));
       section.append(heading);
       if (!state.reachable) section.append(make('p', 'Current state unknown. Waiting for the system.', 'quiet'));
       else if (name === 'cluster') {
         for (const [deployment, data] of Object.entries(state.deployments || {})) {
           const block = make('div', null, 'deployment'); block.append(make('h3', deployment));
           const list = make('dl');
-          definition(list, 'Image', data.image);
-          definition(list, 'Revision', `${data.revision ?? '—'}${data.ready === false ? ' · not ready' : ''}`);
-          definition(list, 'Last restart', data.restarted_at || 'None');
-          definition(list, 'Action id', data.action_id || 'None');
+          const prefix = `cluster/${deployment}/`;
+          definition(list, 'Image', data.image, prefix + 'image');
+          definition(list, 'Revision', `${data.revision ?? '—'}${data.ready === false ? ' · not ready' : ''}`, prefix + 'revision');
+          definition(list, 'Last restart', data.restarted_at ? clock(data.restarted_at) : 'never', prefix + 'restart');
+          definition(list, 'Action id', data.action_id || 'none yet', prefix + 'action');
           block.append(list); section.append(block);
         }
       } else {
-        section.append(make('p', Object.entries(state.weights || {}).map(([region, percent]) => `${region.replace('region-', 'Region ').toUpperCase()} ${percent}%`).join(' / '), 'weights'));
-        const list = make('dl'); definition(list, 'Action id', state.last_action_id || 'None'); section.append(list);
+        const weights = make('p', null, 'weights');
+        for (const [region, percent] of Object.entries(state.weights || {})) {
+          if (weights.childNodes.length) weights.append(document.createTextNode(' / '));
+          weights.append(document.createTextNode(region.replace('region-', 'Region ').toUpperCase() + ' '), targetValue('span', 'router/' + region, `${percent}%`));
+        }
+        section.append(weights);
+        const list = make('dl'); definition(list, 'Action id', state.last_action_id || 'none yet', 'router/action'); section.append(list);
       }
       sections.push(section);
     }
@@ -151,20 +187,39 @@ async function pollTargets() {
   } finally { targetLoading = false; }
 }
 function status(message, isPending = false) { $('key-status').textContent = `${latestKey ? latestKey + ' · ' : ''}${message}`; $('key-status').classList.toggle('pending', isPending); }
-function confirmPending(state) {
-  if (!pending || busy) return;
-  const run = state.run;
-  let confirmed = false;
-  if (pending.key === '1' || pending.key === '2') confirmed = !!run && (pending.run_id ? run._id === pending.run_id : run._id !== pending.beforeRun);
-  if (pending.key === 'S') confirmed = !!state.stop;
-  if (pending.key === 'K') confirmed = state.workers.some(worker => worker.status === 'killed');
-  if (pending.key === 'W') confirmed = state.workers.some(worker => worker.principal === 'agent:worker-2' && !['killed','held'].includes(worker.status));
-  if (pending.key === 'R') confirmed = state.receipt?.status === 'closed';
-  if (pending.key === 'U') confirmed = state.receipt?.rows.some(row => row.undo);
-  if (confirmed) { status('Confirmed.'); pending = null; }
+function showValidation(result) {
+  const detail = result.detail || {};
+  const refusal = detail.refusal || detail.error || detail.message || (Object.keys(detail).length ? detail : result.message);
+  $('validation-text').textContent = typeof refusal === 'string' ? refusal : JSON.stringify(refusal, null, 2);
+  $('validation-panel').hidden = false;
+  clearTimeout(validationTimer);
+  validationTimer = setTimeout(() => { $('validation-panel').hidden = true; }, 5000);
+}
+async function pollOperation() {
+  if (!pending || busy || operationLoading) return;
+  operationLoading = true;
+  const request = pending;
+  try {
+    const response = await fetch('/api/operation/' + request.key);
+    const result = await response.json();
+    if (response.ok && !result.pending && pending === request) {
+      pending = null;
+      status(result.message || 'Request finished.');
+      if (request.key === 'V') showValidation(result);
+    }
+  } catch (_) { /* Keep pending until the stage can confirm its own result. */ }
+  finally { operationLoading = false; }
 }
 async function keypress(key) {
   if (busy) return;
+  pending = null;
+  if (key === 'P') {
+    latestKey = key;
+    if (!current?.run) { status('Start a run to open its report.'); return; }
+    window.open('/report/' + encodeURIComponent(current.run._id), '_blank', 'noopener');
+    status('Opened the run report.');
+    return;
+  }
   if (key === 'M' && $('numbers-dialog').open) { $('numbers-dialog').close(); return; }
   busy = true; latestKey = key; status('pending', true);
   const beforeRun = current?.run?._id;
@@ -176,9 +231,10 @@ async function keypress(key) {
       if (!$('numbers-dialog').open) $('numbers-dialog').showModal();
     }
     pending = result.pending ? {...result, key, beforeRun} : null;
+    if (key === 'V' && !result.pending) showValidation(result);
     status(result.pending ? `pending · ${result.message}` : result.message || 'Request failed.', !!result.pending);
   } catch (_) { status('Connection lost · request unconfirmed.'); }
-  finally { busy = false; await refresh(); await pollTargets(); }
+  finally { busy = false; await refresh(); await pollTargets(); if (pending) pollOperation(); }
 }
 async function showChain(actionId) {
   if (!actionId) return;
@@ -203,7 +259,7 @@ async function showChain(actionId) {
 document.addEventListener('keydown', event => {
   if (event.repeat || event.ctrlKey || event.metaKey || event.altKey || /INPUT|TEXTAREA|SELECT/.test(event.target.tagName)) return;
   const key = event.key.toUpperCase();
-  if (!'12SKWRUVM'.includes(key) || key.length !== 1 || $('chain-dialog').open) return;
+  if (!'12SKWRUVMP'.includes(key) || key.length !== 1 || $('chain-dialog').open) return;
   if ($('numbers-dialog').open && key !== 'M') $('numbers-dialog').close();
   event.preventDefault(); keypress(key);
 });
@@ -224,5 +280,6 @@ events.addEventListener('change', event => {
 events.onerror = () => { $('connection').textContent = 'Reconnecting · keeping confirmed state'; };
 refresh(); pollTargets();
 setInterval(pollTargets, 1500);
+setInterval(pollOperation, 750);
 setInterval(() => { if (pending || $('connection').textContent !== 'Live') refresh(); }, 2000);
 window.addEventListener('pagehide', () => events.close());

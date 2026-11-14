@@ -18,8 +18,8 @@ store = Path(os.environ['STOPLINE_VIEW_RECORDS']) if os.environ.get('STOPLINE_VI
 
 
 class SavedStage(ScriptedStage):
-    def result(self, name, message):
-        result = super().result(name, message)
+    def result(self, name, message, detail=None):
+        result = super().result(name, message, detail)
         if store:
             store.write_text(dumps({'records': db.records, 'targets': {name: target.data for name, target in targets.items()}, 'serial': self.serial}))
         return result

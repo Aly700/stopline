@@ -1,5 +1,6 @@
 """Scripted records for exercising the judge's sequence without external actions."""
 from copy import deepcopy
+from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
 from queue import Empty, Queue
 import threading
@@ -114,11 +115,16 @@ class ScriptedStage:
         self.db, self.targets, self.calls = db, targets, []
         self.run = None
         self.serial = 0
+        self.operations = {}
 
-    def result(self, name, message):
+    def result(self, name, message, detail=None):
         self.calls.append(name)
         self.db.changed()
-        return StageResult(True, message, run_id=self.run['_id'] if self.run else None)
+        result = StageResult(True, message, run_id=self.run['_id'] if self.run else None, detail=detail or {})
+        operation = {'stop':'press_stop', 'cut':'cut_and_kill', 'resume':'resume_worker',
+                     'restore':'restore_and_reconcile', 'undo':'undo', 'validation':'validation_rejection'}.get(name, 'start_run')
+        self.operations[operation] = asdict(result)
+        return result
 
     def effect(self, worker, step, state, seq):
         principal = f'agent:worker-{worker}'
@@ -206,8 +212,9 @@ class ScriptedStage:
         self.targets['router'].data['reachable'] = True
         for effect in self.db.records['effects']:
             if effect['run_id'] == self.run['_id'] and effect['state'] == 'sent':
-                effect.update(state='applied', evidence={'system': 'router', 'action_id': effect['_id'], 'at_epoch': NOW.timestamp() + 20, 'applied': True})
+                effect.update(state='applied', finished_at=NOW + timedelta(seconds=20), evidence={'system': 'router', 'action_id': effect['_id'], 'at_epoch': NOW.timestamp() + 20, 'applied': True})
         self.db.records['receipts'][-1].update(status='closed', closed_at=NOW + timedelta(seconds=20))
+        self.db.records['tasks'][-1]['note'] = 'Restored the router and checked the outstanding sends.'
         return self.result('restore', 'Asked router about the action. Router: applied.')
 
     def undo(self):
@@ -226,7 +233,7 @@ class ScriptedStage:
         return self.result('undo', 'Traffic shift undone under the operator’s permission.')
 
     def validation_rejection(self):
-        return self.result('validation', 'Database refused the malformed record.')
+        return self.result('validation', 'Database refused the malformed record.', {'error': 'Document failed validation (code 121).'})
 
     def status(self):
-        return {'run': self.run}
+        return {'run': self.run, 'operations': deepcopy(self.operations)}
