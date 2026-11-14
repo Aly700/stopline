@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
@@ -31,8 +32,8 @@ from typing import Any, Mapping, NotRequired, Protocol, TypedDict
 # ---------------------------------------------------------------- names
 
 DB_NAME = "stopline"
-PAGE_PORT = 8765
-ROUTER_PORT = 8766
+PAGE_PORT = int(os.environ.get("STOPLINE_PAGE_PORT", "8765"))      # the environment override exists for tests
+ROUTER_PORT = int(os.environ.get("STOPLINE_ROUTER_PORT", "8766"))
 ROUTER_URL = f"http://127.0.0.1:{ROUTER_PORT}"
 KUBE_CONTEXT = "kind-stopline"
 KUBE_NAMESPACE = "checkout"
