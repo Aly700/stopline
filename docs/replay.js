@@ -11,6 +11,7 @@
   const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
   let recording, snapshot, cursor = 0, playing = false, serial = 0, recordedSerial;
   let autoplay = false, autoplayVersion = 0, loadError = false;
+  let queued = null;   // the next key, pressed while the last one was still playing
 
   function apiPath(input) {
     const url = new URL(input instanceof Request ? input.url : String(input), base);
@@ -87,7 +88,14 @@
       }
       // Preserve the original key answer; the console polls its operation when pending.
       return copy(step.answer);
-    } finally { playing = false; }
+    } finally {
+      playing = false;
+      if (queued) {
+        const next = queued;
+        queued = null;
+        setTimeout(() => document.dispatchEvent(new KeyboardEvent('keydown', {key: next, bubbles: true})), 200);
+      }
+    }
   }
   function runSummaries() {
     return recording.runs.filter(run => history.has(run.id)).map(run => {
@@ -216,6 +224,11 @@
         window.open('report.html', '_blank', 'noopener');
         notice(key, "Opened the recorded reviewer's report.");
       } else notice(key, 'This recording has no model trace.');
+    } else if (/^[A-Z0-9]$/.test(key) && key !== 'F' && recording && playing && key === nextKey()) {
+      // The right key, a little early: play it as soon as the last one finishes.
+      event.preventDefault(); event.stopImmediatePropagation();
+      queued = key;
+      notice(key, 'Still playing the last key. This one is next.');
     } else if (/^[A-Z0-9]$/.test(key) && key !== 'F' && recording && (playing || key !== nextKey())) {
       event.preventDefault(); event.stopImmediatePropagation();
       wrongKey(key);

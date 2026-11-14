@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><link rel="icon" href="data:,"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>StopLine · rbd2cf7c178</title><style>
+<!doctype html><html lang="en"><head><link rel="icon" href="data:,"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>StopLine · r4904263866</title><style>
 :root{color-scheme:dark;--canvas:#090f19;--panel:#101925;--raised:#152131;
 --line:#293649;--text:#e5ecf5;--muted:#9baac0;--blue:#83b5ff;
 --green:#86d9b0;--green-bg:#142e29;--amber:#f0c781;--amber-bg:#352b1b;
@@ -87,34 +87,17 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
 .chip.mode{background:var(--raised);color:var(--blue);border-color:var(--line)}
 .chip,.outcome{border-color:var(--line)!important}a{color:inherit;text-decoration:none}.checks>li{padding:8px 12px}
 .records{padding:12px}.policy code{font-size:10px}}
-</style></head><body><main><header><div class="heading"><div><h1>StopLine · Run review</h1><p>Rebuilt from the stored records only. Nothing on this page comes from the running program's memory.</p></div><span class="chip mode">stopline</span></div><p class="run-meta"><code class="run-id">rbd2cf7c178</code><span class="meta">mock cluster</span><span class="chip ">stopped</span><span class="chip pass">7 checks passed</span></p><p class="meta">Reconstructed from stored records in one database snapshot. Created 2026-11-14 22:17:37.388000 UTC. Times are UTC.</p><dl class="summary"><div><dt>Actions allowed</dt><dd>4</dd></div><div><dt>Actions refused</dt><dd>3</dd></div><div><dt>Actions unknown</dt><dd class="">0</dd></div><div><dt>Receipt</dt><dd><span class="chip pass">CLOSED</span></dd></div><div><dt>Checks passed</dt><dd>7 <small>/ 7</small></dd></div></dl></header><div class="top"><section class="panel"><div class="section-heading"><h2>Permissions</h2></div><div class="panel-body"><ul class="tree"><li class="tree-root"><div class="permission-node"><div class="permission-title"><strong>operator</strong> <span class="permission">← operator · permission <code>72aa7d712e7547eba81ce7e12bb70b73</code></span></div><details><summary>12 actions · up to 100% traffic</summary><div class="scope">Tools: restart, rollback, shift_traffic · Targets: cluster/checkout-api, cluster/checkout-worker, router/region-b</div><div class="scope">Until 2026-11-14 23:17:37.906000 UTC</div></details><p class="permission-stop"><span class="chip pass">active</span></p></div><ul class="tree"><li class="tree-child"><div class="permission-node"><div class="permission-title"><strong>repair</strong> <span class="permission">← operator · permission <code>7e75fba3819c48f986ff9a3978e6183e</code></span></div><details><summary>4 actions · up to 50% traffic</summary><div class="scope">Tools: restart, rollback, shift_traffic · Targets: cluster/checkout-api, cluster/checkout-worker, router/region-b</div><div class="scope">Until 2026-11-14 22:47:38.184000 UTC</div></details><p class="permission-stop">Stopped by operator · #7 · 2026-11-14 22:17:50.234000 UTC</p></div><ul class="tree"><li class="tree-child"><div class="permission-node"><div class="permission-title"><strong>worker-1</strong> <span class="permission">← repair · permission <code>b8e9bce3ff6b439e92bf49039ca9eb08</code></span></div><details><summary>2 actions · up to 0% traffic</summary><div class="scope">Tools: restart, rollback · Targets: cluster/checkout-api, cluster/checkout-worker</div><div class="scope">Until 2026-11-14 22:32:38.965000 UTC</div></details><p class="permission-stop">Stopped by operator · #7 · 2026-11-14 22:17:50.234000 UTC</p></div></li><li class="tree-child"><div class="permission-node"><div class="permission-title"><strong>worker-2</strong> <span class="permission">← repair · permission <code>e817b96334e34b039e4c43ef247dd971</code></span></div><details><summary>2 actions · up to 50% traffic</summary><div class="scope">Tools: shift_traffic · Targets: router/region-b</div><div class="scope">Until 2026-11-14 22:32:39.573000 UTC</div></details><p class="permission-stop">Stopped by operator · #7 · 2026-11-14 22:17:50.234000 UTC</p></div></li></ul></li></ul></li></ul></div></section><section class="panel stop"><div class="section-heading"><h2>Stops &amp; receipts</h2></div><div class="panel-body"><div class="receipt"><p>Permission <code>7e75fba3819c48f986ff9a3978e6183e</code></p><p class="meta">Stopped by operator · #7 · 2026-11-14 22:17:50.234000 UTC</p><p class="receipt-status"><span class="chip pass">CLOSED</span> <span>· receipt <code>fba7becb8d2441eaa33c12c3e735d662</code></span></p><p class="meta">Fixed covered list:</p><ul class="covered"><li><a href="#action-8671313c578dc3cc"><code>rbd2cf7c178-worker-1-0</code></a> <span class="chip pass">completed</span></li><li><a href="#action-26113363fb01f19a"><code>rbd2cf7c178-worker-2-0</code></a> <span class="chip pass">completed</span></li><li><a href="#action-b39b2de61d5d2269"><code>rbd2cf7c178-worker-1-1</code></a> <span class="chip fail">blocked</span></li></ul><p class="meta">2 later refusal(s), outside the covered list.</p><p class="meta">Closed 2026-11-14 22:17:58.440000 UTC</p></div></div></section></div><section class="panel"><div class="section-heading"><h2>Actions in order</h2></div><table><thead><tr><th scope="col">Counter / time</th><th scope="col">Action / target</th><th scope="col">Who asked / chain</th><th scope="col">Decision / policy</th><th scope="col">Outcome / undo</th><th scope="col">Target evidence</th></tr></thead><tbody><tr id="action-8671313c578dc3cc"><td>#4<small>22:17:42<wbr>.299000</small></td><td><span class="action-name">Roll back to v1</span><span class="action-id">· <code title="rbd2cf7c178-worker-1-0">rbd2cf7c178-worker-1-0</code></span><small class="target">cluster/checkout-api</small></td><td>worker-1<div class="chain"><code title="72aa7d712e7547eba81ce7e12bb70b73">72aa7…2bb70b73</code><span class="chain-arrow">→</span><code title="7e75fba3819c48f986ff9a3978e6183e">7e75f…78e6183e</code><span class="chain-arrow">→</span><code title="b8e9bce3ff6b439e92bf49039ca9eb08">b8e9b…9ca9eb08</code></div></td><td><span class="chip pass">allowed</span><small class="policy-ref">v1 · <span title="6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773">6985d7ecd812</span></small></td><td><span class="outcome pass">completed</span><small></small><small>No undo available</small></td><td>cluster · confirmed<details><summary>Evidence · target 22:17:43 UTC</summary><pre>{
-  &quot;action_id&quot;: &quot;rbd2cf7c178-worker-1-0&quot;,
+</style></head><body><main><header><div class="heading"><div><h1>StopLine · Run review</h1><p>Rebuilt from the stored records only. Nothing on this page comes from the running program's memory.</p></div><span class="chip mode">stopline</span></div><p class="run-meta"><code class="run-id">r4904263866</code><span class="meta">kind cluster</span><span class="chip ">stopped</span><span class="chip pass">7 checks passed</span></p><p class="meta">Reconstructed from stored records in one database snapshot. Created 2026-11-14 22:31:54.974000 UTC. Times are UTC.</p><dl class="summary"><div><dt>Actions allowed</dt><dd>4</dd></div><div><dt>Actions refused</dt><dd>3</dd></div><div><dt>Actions unknown</dt><dd class="">0</dd></div><div><dt>Receipt</dt><dd><span class="chip pass">CLOSED</span></dd></div><div><dt>Checks passed</dt><dd>7 <small>/ 7</small></dd></div></dl></header><div class="top"><section class="panel"><div class="section-heading"><h2>Permissions</h2></div><div class="panel-body"><ul class="tree"><li class="tree-root"><div class="permission-node"><div class="permission-title"><strong>operator</strong> <span class="permission">← operator · permission <code>4edb59feb2de4837bd96354b356cabcc</code></span></div><details><summary>12 actions · up to 100% traffic</summary><div class="scope">Tools: restart, rollback, shift_traffic · Targets: cluster/checkout-api, cluster/checkout-worker, router/region-b</div><div class="scope">Until 2026-11-14 23:31:55.489000 UTC</div></details><p class="permission-stop"><span class="chip pass">active</span></p></div><ul class="tree"><li class="tree-child"><div class="permission-node"><div class="permission-title"><strong>repair</strong> <span class="permission">← operator · permission <code>1a729349142d487dba7b6c6dd18899a1</code></span></div><details><summary>4 actions · up to 50% traffic</summary><div class="scope">Tools: restart, rollback, shift_traffic · Targets: cluster/checkout-api, cluster/checkout-worker, router/region-b</div><div class="scope">Until 2026-11-14 23:01:55.760000 UTC</div></details><p class="permission-stop">Stopped by operator · #7 · 2026-11-14 22:32:08.328000 UTC</p></div><ul class="tree"><li class="tree-child"><div class="permission-node"><div class="permission-title"><strong>worker-2</strong> <span class="permission">← repair · permission <code>657584c117f046e4be27315e2ddaff02</code></span></div><details><summary>2 actions · up to 50% traffic</summary><div class="scope">Tools: shift_traffic · Targets: router/region-b</div><div class="scope">Until 2026-11-14 22:46:57.851000 UTC</div></details><p class="permission-stop">Stopped by operator · #7 · 2026-11-14 22:32:08.328000 UTC</p></div></li><li class="tree-child"><div class="permission-node"><div class="permission-title"><strong>worker-1</strong> <span class="permission">← repair · permission <code>781832e6c9bc45a28d5d3fa58a7d0998</code></span></div><details><summary>2 actions · up to 0% traffic</summary><div class="scope">Tools: restart, rollback · Targets: cluster/checkout-api, cluster/checkout-worker</div><div class="scope">Until 2026-11-14 22:46:57.223000 UTC</div></details><p class="permission-stop">Stopped by operator · #7 · 2026-11-14 22:32:08.328000 UTC</p></div></li></ul></li></ul></li></ul></div></section><section class="panel stop"><div class="section-heading"><h2>Stops &amp; receipts</h2></div><div class="panel-body"><div class="receipt"><p>Permission <code>1a729349142d487dba7b6c6dd18899a1</code></p><p class="meta">Stopped by operator · #7 · 2026-11-14 22:32:08.328000 UTC</p><p class="receipt-status"><span class="chip pass">CLOSED</span> <span>· receipt <code>a806a29bed584b11950bc84227840725</code></span></p><p class="meta">Fixed covered list:</p><ul class="covered"><li><a href="#action-2c61b26e194cb498"><code>r4904263866-worker-1-0</code></a> <span class="chip pass">completed</span></li><li><a href="#action-caa52760f859f2de"><code>r4904263866-worker-2-0</code></a> <span class="chip pass">completed</span></li><li><a href="#action-9c4f3e5830183d55"><code>r4904263866-worker-1-1</code></a> <span class="chip fail">blocked</span></li></ul><p class="meta">2 later refusal(s), outside the covered list.</p><p class="meta">Closed 2026-11-14 22:32:16.644000 UTC</p></div></div></section></div><section class="panel"><div class="section-heading"><h2>Actions in order</h2></div><table><thead><tr><th scope="col">Counter / time</th><th scope="col">Action / target</th><th scope="col">Who asked / chain</th><th scope="col">Decision / policy</th><th scope="col">Outcome / undo</th><th scope="col">Target evidence</th></tr></thead><tbody><tr id="action-2c61b26e194cb498"><td>#4<small>22:32:00<wbr>.570000</small></td><td><span class="action-name">Roll back to v1</span><span class="action-id">· <code title="r4904263866-worker-1-0">r4904263866-worker-1-0</code></span><small class="target">cluster/checkout-api</small></td><td>worker-1<div class="chain"><code title="4edb59feb2de4837bd96354b356cabcc">4edb5…356cabcc</code><span class="chain-arrow">→</span><code title="1a729349142d487dba7b6c6dd18899a1">1a729…d18899a1</code><span class="chain-arrow">→</span><code title="781832e6c9bc45a28d5d3fa58a7d0998">78183…8a7d0998</code></div></td><td><span class="chip pass">allowed</span><small class="policy-ref">v1 · <span title="6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773">6985d7ecd812</span></small></td><td><span class="outcome pass">completed</span><small></small><small>No undo available</small></td><td>cluster · confirmed<details><summary>Evidence · target 22:32:01 UTC</summary><pre>{
+  &quot;action_id&quot;: &quot;r4904263866-worker-1-0&quot;,
   &quot;system&quot;: &quot;cluster&quot;,
-  &quot;at_epoch&quot;: 1794694663.5390751,
-  &quot;applied&quot;: true,
-  &quot;reason&quot;: &quot;ok&quot;,
+  &quot;at_epoch&quot;: 1794695521.888214,
   &quot;deployment&quot;: &quot;checkout-api&quot;,
-  &quot;before&quot;: {
-    &quot;image&quot;: &quot;stopline/checkout:v2&quot;,
-    &quot;version&quot;: &quot;v2&quot;,
-    &quot;revision&quot;: 1,
-    &quot;restarted_at&quot;: null,
-    &quot;action_id&quot;: null,
-    &quot;ready&quot;: true
-  },
-  &quot;after&quot;: {
-    &quot;image&quot;: &quot;stopline/checkout:v1&quot;,
-    &quot;version&quot;: &quot;v1&quot;,
-    &quot;revision&quot;: 2,
-    &quot;restarted_at&quot;: null,
-    &quot;action_id&quot;: &quot;rbd2cf7c178-worker-1-0&quot;,
-    &quot;ready&quot;: true
-  },
-  &quot;log_id&quot;: 1
-}</pre></details></td></tr><tr id="action-26113363fb01f19a"><td>#5<small>22:17:42<wbr>.992000</small></td><td><span class="action-name">Shift traffic to 25%</span><span class="action-id">· <code title="rbd2cf7c178-worker-2-0">rbd2cf7c178-worker-2-0</code></span><small class="target">router/region-b</small></td><td>worker-2<div class="chain"><code title="72aa7d712e7547eba81ce7e12bb70b73">72aa7…2bb70b73</code><span class="chain-arrow">→</span><code title="7e75fba3819c48f986ff9a3978e6183e">7e75f…78e6183e</code><span class="chain-arrow">→</span><code title="e817b96334e34b039e4c43ef247dd971">e817b…247dd971</code></div></td><td><span class="chip pass">allowed</span><small class="policy-ref">v1 · <span title="6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773">6985d7ecd812</span></small></td><td><span class="outcome pass">completed</span><small></small><small>Undo: <a href="#action-4748f591dc2119a5"><code title="rbd2cf7c178-worker-2-0-undo">rbd2cf7…2-0-undo</code></a></small></td><td>router · region-a 75%, region-b 25%<details><summary>Evidence · target 22:17:48 UTC</summary><pre>{
-  &quot;action_id&quot;: &quot;rbd2cf7c178-worker-2-0&quot;,
+  &quot;generation&quot;: 2,
+  &quot;image&quot;: &quot;stopline/checkout:v1&quot;
+}</pre></details></td></tr><tr id="action-caa52760f859f2de"><td>#5<small>22:32:01<wbr>.352000</small></td><td><span class="action-name">Shift traffic to 25%</span><span class="action-id">· <code title="r4904263866-worker-2-0">r4904263866-worker-2-0</code></span><small class="target">router/region-b</small></td><td>worker-2<div class="chain"><code title="4edb59feb2de4837bd96354b356cabcc">4edb5…356cabcc</code><span class="chain-arrow">→</span><code title="1a729349142d487dba7b6c6dd18899a1">1a729…d18899a1</code><span class="chain-arrow">→</span><code title="657584c117f046e4be27315e2ddaff02">65758…2ddaff02</code></div></td><td><span class="chip pass">allowed</span><small class="policy-ref">v1 · <span title="6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773">6985d7ecd812</span></small></td><td><span class="outcome pass">completed</span><small></small><small>Undo: <a href="#action-a2e45423a0befc3d"><code title="r4904263866-worker-2-0-undo">r490426…2-0-undo</code></a></small></td><td>router · region-a 75%, region-b 25%<details><summary>Evidence · target 22:32:06 UTC</summary><pre>{
+  &quot;action_id&quot;: &quot;r4904263866-worker-2-0&quot;,
   &quot;system&quot;: &quot;router&quot;,
-  &quot;at_epoch&quot;: 1794694668.6195369,
+  &quot;at_epoch&quot;: 1794695526.902803,
   &quot;applied&quot;: true,
   &quot;reason&quot;: &quot;ok&quot;,
   &quot;before&quot;: {
@@ -126,10 +109,10 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
     &quot;region-b&quot;: 25
   },
   &quot;log_id&quot;: 1
-}</pre></details></td></tr><tr id="action-b39b2de61d5d2269"><td>#6<small>22:17:44<wbr>.556000</small></td><td><span class="action-name">Restart</span><span class="action-id">· <code title="rbd2cf7c178-worker-1-1">rbd2cf7c178-worker-1-1</code></span><small class="target">cluster/checkout-worker</small></td><td>worker-1<div class="chain"><code title="72aa7d712e7547eba81ce7e12bb70b73">72aa7…2bb70b73</code><span class="chain-arrow">→</span><code title="7e75fba3819c48f986ff9a3978e6183e">7e75f…78e6183e</code><span class="chain-arrow">→</span><code title="b8e9bce3ff6b439e92bf49039ca9eb08">b8e9b…9ca9eb08</code></div></td><td><span class="chip pass">allowed</span><small class="policy-ref">v1 · <span title="6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773">6985d7ecd812</span></small></td><td><span class="outcome fail">blocked</span><small>cancelled by the stop</small></td><td>Never sent; cancelled by stop.</td></tr><tr id="action-359d89d86390a4b7"><td>#7<small>22:17:46<wbr>.485000</small></td><td><span class="action-name">Shift traffic to 90%</span><span class="action-id">· <code title="rbd2cf7c178-worker-2-over-1">rbd2cf7c178-wor…2-over-1</code></span><small class="target">router/region-b</small></td><td>worker-2<div class="chain"><code title="72aa7d712e7547eba81ce7e12bb70b73">72aa7…2bb70b73</code><span class="chain-arrow">→</span><code title="7e75fba3819c48f986ff9a3978e6183e">7e75f…78e6183e</code><span class="chain-arrow">→</span><code title="e817b96334e34b039e4c43ef247dd971">e817b…247dd971</code></div></td><td><span class="chip fail">refused</span><small class="policy-ref">v1 · <span title="6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773">6985d7ecd812</span></small></td><td><span class="outcome fail">blocked</span><small>permission limit exceeded</small></td><td>No request was sent.</td></tr><tr id="action-583e3755432355b5"><td>#8<small>22:17:56<wbr>.345000</small></td><td><span class="action-name">Shift traffic to 50%</span><span class="action-id">· <code title="rbd2cf7c178-worker-2-1">rbd2cf7c178-worker-2-1</code></span><small class="target">router/region-b</small></td><td>worker-2<div class="chain"><code title="72aa7d712e7547eba81ce7e12bb70b73">72aa7…2bb70b73</code><span class="chain-arrow">→</span><code title="7e75fba3819c48f986ff9a3978e6183e">7e75f…78e6183e</code><span class="chain-arrow">→</span><code title="e817b96334e34b039e4c43ef247dd971">e817b…247dd971</code></div></td><td><span class="chip fail">refused</span><small class="policy-ref">v1 · <span title="6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773">6985d7ecd812</span></small></td><td><span class="outcome fail">blocked</span><small>permission stopped</small></td><td>No request was sent.</td></tr><tr id="action-4748f591dc2119a5"><td>#8<small>22:18:00<wbr>.721000</small></td><td><span class="action-name">Shift traffic to 0%</span><span class="action-id">· <code title="rbd2cf7c178-worker-2-0-undo">rbd2cf7c178-wor…2-0-undo</code></span><small class="target">router/region-b</small></td><td>operator<div class="chain"><code title="72aa7d712e7547eba81ce7e12bb70b73">72aa7…2bb70b73</code></div></td><td><span class="chip pass">allowed</span><small class="policy-ref">v1 · <span title="6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773">6985d7ecd812</span></small></td><td><span class="outcome pass">completed</span><small></small><small>Undo of <a href="#action-26113363fb01f19a"><code title="rbd2cf7c178-worker-2-0">rbd2cf7…rker-2-0</code></a></small></td><td>router · region-a 100%, region-b 0%<details><summary>Evidence · target 22:18:02 UTC</summary><pre>{
-  &quot;action_id&quot;: &quot;rbd2cf7c178-worker-2-0-undo&quot;,
+}</pre></details></td></tr><tr id="action-9c4f3e5830183d55"><td>#6<small>22:32:02<wbr>.923000</small></td><td><span class="action-name">Restart</span><span class="action-id">· <code title="r4904263866-worker-1-1">r4904263866-worker-1-1</code></span><small class="target">cluster/checkout-worker</small></td><td>worker-1<div class="chain"><code title="4edb59feb2de4837bd96354b356cabcc">4edb5…356cabcc</code><span class="chain-arrow">→</span><code title="1a729349142d487dba7b6c6dd18899a1">1a729…d18899a1</code><span class="chain-arrow">→</span><code title="781832e6c9bc45a28d5d3fa58a7d0998">78183…8a7d0998</code></div></td><td><span class="chip pass">allowed</span><small class="policy-ref">v1 · <span title="6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773">6985d7ecd812</span></small></td><td><span class="outcome fail">blocked</span><small>cancelled by the stop</small></td><td>Never sent; cancelled by stop.</td></tr><tr id="action-0c1d236b41a001a2"><td>#7<small>22:32:04<wbr>.847000</small></td><td><span class="action-name">Shift traffic to 90%</span><span class="action-id">· <code title="r4904263866-worker-2-over-1">r4904263866-wor…2-over-1</code></span><small class="target">router/region-b</small></td><td>worker-2<div class="chain"><code title="4edb59feb2de4837bd96354b356cabcc">4edb5…356cabcc</code><span class="chain-arrow">→</span><code title="1a729349142d487dba7b6c6dd18899a1">1a729…d18899a1</code><span class="chain-arrow">→</span><code title="657584c117f046e4be27315e2ddaff02">65758…2ddaff02</code></div></td><td><span class="chip fail">refused</span><small class="policy-ref">v1 · <span title="6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773">6985d7ecd812</span></small></td><td><span class="outcome fail">blocked</span><small>permission limit exceeded</small></td><td>No request was sent.</td></tr><tr id="action-10c99fd57ff53a82"><td>#8<small>22:32:14<wbr>.625000</small></td><td><span class="action-name">Shift traffic to 50%</span><span class="action-id">· <code title="r4904263866-worker-2-1">r4904263866-worker-2-1</code></span><small class="target">router/region-b</small></td><td>worker-2<div class="chain"><code title="4edb59feb2de4837bd96354b356cabcc">4edb5…356cabcc</code><span class="chain-arrow">→</span><code title="1a729349142d487dba7b6c6dd18899a1">1a729…d18899a1</code><span class="chain-arrow">→</span><code title="657584c117f046e4be27315e2ddaff02">65758…2ddaff02</code></div></td><td><span class="chip fail">refused</span><small class="policy-ref">v1 · <span title="6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773">6985d7ecd812</span></small></td><td><span class="outcome fail">blocked</span><small>permission stopped</small></td><td>No request was sent.</td></tr><tr id="action-a2e45423a0befc3d"><td>#8<small>22:32:18<wbr>.833000</small></td><td><span class="action-name">Shift traffic to 0%</span><span class="action-id">· <code title="r4904263866-worker-2-0-undo">r4904263866-wor…2-0-undo</code></span><small class="target">router/region-b</small></td><td>operator<div class="chain"><code title="4edb59feb2de4837bd96354b356cabcc">4edb5…356cabcc</code></div></td><td><span class="chip pass">allowed</span><small class="policy-ref">v1 · <span title="6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773">6985d7ecd812</span></small></td><td><span class="outcome pass">completed</span><small></small><small>Undo of <a href="#action-caa52760f859f2de"><code title="r4904263866-worker-2-0">r490426…rker-2-0</code></a></small></td><td>router · region-a 100%, region-b 0%<details><summary>Evidence · target 22:32:20 UTC</summary><pre>{
+  &quot;action_id&quot;: &quot;r4904263866-worker-2-0-undo&quot;,
   &quot;system&quot;: &quot;router&quot;,
-  &quot;at_epoch&quot;: 1794694682.06564,
+  &quot;at_epoch&quot;: 1794695540.173027,
   &quot;applied&quot;: true,
   &quot;reason&quot;: &quot;ok&quot;,
   &quot;before&quot;: {
@@ -141,29 +124,29 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
     &quot;region-b&quot;: 0
   },
   &quot;log_id&quot;: 2
-}</pre></details></td></tr><tr id="action-02bf6ae161c7b759"><td>—<small>22:18:02<wbr>.820000</small></td><td><span class="action-name">Roll back to v1</span><span class="action-id">· <code title="rbd2cf7c178-worker-1-0-undo">rbd2cf7c178-wor…1-0-undo</code></span><small class="target">cluster/checkout-api</small></td><td>operator<div class="chain"><code title="72aa7d712e7547eba81ce7e12bb70b73">72aa7…2bb70b73</code></div></td><td><span class="chip fail">refused</span><small class="policy-ref">v1 · <span title="6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773">6985d7ecd812</span></small></td><td><span class="outcome fail">blocked</span><small>no undo available</small></td><td>No request was sent.</td></tr></tbody></table></section><section class="panel refusals"><h2>Refused: </h2><p><strong>rbd2cf7c178-worker-2-over-1</strong> · worker-2 · permission limit exceeded · 2026-11-14 22:17:46.485000 UTC</p><p><strong>rbd2cf7c178-worker-1-1</strong> · sender · cancelled by the stop · Stopped by operator · #7 · 2026-11-14 22:17:50.234000 UTC</p><p><strong>rbd2cf7c178-worker-2-1</strong> · worker-2 · permission stopped · Stopped by operator · #7 · 2026-11-14 22:17:50.234000 UTC</p><p><strong>rbd2cf7c178-worker-1-0-undo</strong> · operator · no undo available · 2026-11-14 22:18:02.820000 UTC</p></section><section class="panel"><div class="section-heading"><h2>Checks from the stored records</h2></div><ul class="checks"><li><div class="check-line"><strong class="chip pass">PASS</strong> <span>Every allowed action has a matching allow entry</span></div></li><li><div class="check-line"><strong class="chip pass">PASS</strong> <span>Every action covered by a receipt exists</span></div></li><li><div class="check-line"><strong class="chip pass">PASS</strong> <span>Counter values never repeat for separate operations under one root</span></div></li><li><div class="check-line"><strong class="chip pass">PASS</strong> <span>No action was admitted above its permission’s stop counter</span></div></li><li><div class="check-line"><strong class="chip pass">PASS</strong> <span>No closed receipt contains an unknown or unfinished action</span></div></li><li><div class="check-line"><strong class="chip pass">PASS</strong> <span>Every audit entry names a stored policy version and hash</span></div></li><li><div class="check-line"><strong class="chip pass">PASS</strong> <span>Decision counters run from 1 with no gaps</span></div></li></ul><p class="meta checks-note">Counters allocate hand-downs, admissions and stops; other audit entries may observe the same value. Checks establish consistency of these records.</p></section><p class="policy">Policy v1 · full hash <code>6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773</code></p><details class="records"><summary>Full action details, 19 audit entries and 3 saved work records</summary><pre>{
+}</pre></details></td></tr><tr id="action-5e7600460178c0ec"><td>—<small>22:32:20<wbr>.932000</small></td><td><span class="action-name">Roll back to v1</span><span class="action-id">· <code title="r4904263866-worker-1-0-undo">r4904263866-wor…1-0-undo</code></span><small class="target">cluster/checkout-api</small></td><td>operator<div class="chain"><code title="4edb59feb2de4837bd96354b356cabcc">4edb5…356cabcc</code></div></td><td><span class="chip fail">refused</span><small class="policy-ref">v1 · <span title="6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773">6985d7ecd812</span></small></td><td><span class="outcome fail">blocked</span><small>no undo available</small></td><td>No request was sent.</td></tr></tbody></table></section><section class="panel refusals"><h2>Refused: </h2><p><strong>r4904263866-worker-2-over-1</strong> · worker-2 · permission limit exceeded · 2026-11-14 22:32:04.847000 UTC</p><p><strong>r4904263866-worker-1-1</strong> · sender · cancelled by the stop · Stopped by operator · #7 · 2026-11-14 22:32:08.328000 UTC</p><p><strong>r4904263866-worker-2-1</strong> · worker-2 · permission stopped · Stopped by operator · #7 · 2026-11-14 22:32:08.328000 UTC</p><p><strong>r4904263866-worker-1-0-undo</strong> · operator · no undo available · 2026-11-14 22:32:20.932000 UTC</p></section><section class="panel"><div class="section-heading"><h2>Checks from the stored records</h2></div><ul class="checks"><li><div class="check-line"><strong class="chip pass">PASS</strong> <span>Every allowed action has a matching allow entry</span></div></li><li><div class="check-line"><strong class="chip pass">PASS</strong> <span>Every action covered by a receipt exists</span></div></li><li><div class="check-line"><strong class="chip pass">PASS</strong> <span>Counter values never repeat for separate operations under one root</span></div></li><li><div class="check-line"><strong class="chip pass">PASS</strong> <span>No action was admitted above its permission’s stop counter</span></div></li><li><div class="check-line"><strong class="chip pass">PASS</strong> <span>No closed receipt contains an unknown or unfinished action</span></div></li><li><div class="check-line"><strong class="chip pass">PASS</strong> <span>Every audit entry names a stored policy version and hash</span></div></li><li><div class="check-line"><strong class="chip pass">PASS</strong> <span>Decision counters run from 1 with no gaps</span></div></li></ul><p class="meta checks-note">Counters allocate hand-downs, admissions and stops; other audit entries may observe the same value. Checks establish consistency of these records.</p></section><p class="policy">Policy v1 · full hash <code>6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773</code></p><details class="records"><summary>Full action details, 19 audit entries and 3 saved work records</summary><pre>{
   &quot;actions&quot;: [
     {
-      &quot;_id&quot;: &quot;rbd2cf7c178-worker-1-0&quot;,
-      &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+      &quot;_id&quot;: &quot;r4904263866-worker-1-0&quot;,
+      &quot;run_id&quot;: &quot;r4904263866&quot;,
       &quot;mode&quot;: &quot;stopline&quot;,
-      &quot;root_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-      &quot;permission_id&quot;: &quot;b8e9bce3ff6b439e92bf49039ca9eb08&quot;,
+      &quot;root_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+      &quot;permission_id&quot;: &quot;781832e6c9bc45a28d5d3fa58a7d0998&quot;,
       &quot;chain&quot;: [
         {
-          &quot;permission_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
+          &quot;permission_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
           &quot;holder&quot;: &quot;person:operator&quot;,
           &quot;grantor&quot;: &quot;person:operator&quot;,
           &quot;missing&quot;: false
         },
         {
-          &quot;permission_id&quot;: &quot;7e75fba3819c48f986ff9a3978e6183e&quot;,
+          &quot;permission_id&quot;: &quot;1a729349142d487dba7b6c6dd18899a1&quot;,
           &quot;holder&quot;: &quot;agent:repair&quot;,
           &quot;grantor&quot;: &quot;person:operator&quot;,
           &quot;missing&quot;: false
         },
         {
-          &quot;permission_id&quot;: &quot;b8e9bce3ff6b439e92bf49039ca9eb08&quot;,
+          &quot;permission_id&quot;: &quot;781832e6c9bc45a28d5d3fa58a7d0998&quot;,
           &quot;holder&quot;: &quot;agent:worker-1&quot;,
           &quot;grantor&quot;: &quot;agent:repair&quot;,
           &quot;missing&quot;: false
@@ -179,66 +162,49 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
       &quot;admitted_seq&quot;: 4,
       &quot;state&quot;: &quot;applied&quot;,
       &quot;evidence&quot;: {
-        &quot;action_id&quot;: &quot;rbd2cf7c178-worker-1-0&quot;,
+        &quot;action_id&quot;: &quot;r4904263866-worker-1-0&quot;,
         &quot;system&quot;: &quot;cluster&quot;,
-        &quot;at_epoch&quot;: 1794694663.5390751,
-        &quot;applied&quot;: true,
-        &quot;reason&quot;: &quot;ok&quot;,
+        &quot;at_epoch&quot;: 1794695521.888214,
         &quot;deployment&quot;: &quot;checkout-api&quot;,
-        &quot;before&quot;: {
-          &quot;image&quot;: &quot;stopline/checkout:v2&quot;,
-          &quot;version&quot;: &quot;v2&quot;,
-          &quot;revision&quot;: 1,
-          &quot;restarted_at&quot;: null,
-          &quot;action_id&quot;: null,
-          &quot;ready&quot;: true
-        },
-        &quot;after&quot;: {
-          &quot;image&quot;: &quot;stopline/checkout:v1&quot;,
-          &quot;version&quot;: &quot;v1&quot;,
-          &quot;revision&quot;: 2,
-          &quot;restarted_at&quot;: null,
-          &quot;action_id&quot;: &quot;rbd2cf7c178-worker-1-0&quot;,
-          &quot;ready&quot;: true
-        },
-        &quot;log_id&quot;: 1
+        &quot;generation&quot;: 2,
+        &quot;image&quot;: &quot;stopline/checkout:v1&quot;
       },
       &quot;reverses&quot;: null,
       &quot;undo&quot;: &quot;no_undo&quot;,
       &quot;policy_version&quot;: 1,
       &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
       &quot;claimed_by&quot;: &quot;sender&quot;,
-      &quot;admitted_at&quot;: &quot;2026-11-14T22:17:42.299000Z&quot;,
-      &quot;sent_at&quot;: &quot;2026-11-14T22:17:42.820000Z&quot;,
-      &quot;finished_at&quot;: &quot;2026-11-14T22:17:43.676000Z&quot;,
-      &quot;action_id&quot;: &quot;rbd2cf7c178-worker-1-0&quot;,
-      &quot;permission_id&quot;: &quot;b8e9bce3ff6b439e92bf49039ca9eb08&quot;,
+      &quot;admitted_at&quot;: &quot;2026-11-14T22:32:00.570000Z&quot;,
+      &quot;sent_at&quot;: &quot;2026-11-14T22:32:01.099000Z&quot;,
+      &quot;finished_at&quot;: &quot;2026-11-14T22:32:02.062000Z&quot;,
+      &quot;action_id&quot;: &quot;r4904263866-worker-1-0&quot;,
+      &quot;permission_id&quot;: &quot;781832e6c9bc45a28d5d3fa58a7d0998&quot;,
       &quot;chain_ids&quot;: [
-        &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-        &quot;7e75fba3819c48f986ff9a3978e6183e&quot;,
-        &quot;b8e9bce3ff6b439e92bf49039ca9eb08&quot;
+        &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+        &quot;1a729349142d487dba7b6c6dd18899a1&quot;,
+        &quot;781832e6c9bc45a28d5d3fa58a7d0998&quot;
       ],
       &quot;decision&quot;: &quot;allowed&quot;,
       &quot;counter&quot;: 4,
-      &quot;at&quot;: &quot;2026-11-14T22:17:42.299000Z&quot;,
+      &quot;at&quot;: &quot;2026-11-14T22:32:00.570000Z&quot;,
       &quot;outcome&quot;: &quot;completed&quot;,
       &quot;reason&quot;: &quot;ok&quot;,
       &quot;stopped&quot;: null,
       &quot;undone_by&quot;: [],
       &quot;audit&quot;: [
         {
-          &quot;_id&quot;: &quot;6af8de068f22ba09d2e41153&quot;,
-          &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+          &quot;_id&quot;: &quot;6af8e160db104b13d79c33a4&quot;,
+          &quot;run_id&quot;: &quot;r4904263866&quot;,
           &quot;kind&quot;: &quot;allow&quot;,
           &quot;principal&quot;: &quot;agent:worker-1&quot;,
-          &quot;permission_id&quot;: &quot;b8e9bce3ff6b439e92bf49039ca9eb08&quot;,
-          &quot;root_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-          &quot;action_id&quot;: &quot;rbd2cf7c178-worker-1-0&quot;,
+          &quot;permission_id&quot;: &quot;781832e6c9bc45a28d5d3fa58a7d0998&quot;,
+          &quot;root_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+          &quot;action_id&quot;: &quot;r4904263866-worker-1-0&quot;,
           &quot;policy_version&quot;: 1,
           &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
           &quot;reason&quot;: &quot;ok&quot;,
           &quot;seq&quot;: 4,
-          &quot;at&quot;: &quot;2026-11-14T22:17:42.299000Z&quot;,
+          &quot;at&quot;: &quot;2026-11-14T22:32:00.570000Z&quot;,
           &quot;detail&quot;: {
             &quot;tool&quot;: &quot;rollback&quot;,
             &quot;target&quot;: &quot;cluster/checkout-api&quot;,
@@ -246,92 +212,75 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
               &quot;to_version&quot;: &quot;v1&quot;
             },
             &quot;chain&quot;: [
-              &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-              &quot;7e75fba3819c48f986ff9a3978e6183e&quot;,
-              &quot;b8e9bce3ff6b439e92bf49039ca9eb08&quot;
+              &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+              &quot;1a729349142d487dba7b6c6dd18899a1&quot;,
+              &quot;781832e6c9bc45a28d5d3fa58a7d0998&quot;
             ]
           }
         },
         {
-          &quot;_id&quot;: &quot;6af8de061874dbf754a5ca2d&quot;,
-          &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+          &quot;_id&quot;: &quot;6af8e1615be913aa78ab2743&quot;,
+          &quot;run_id&quot;: &quot;r4904263866&quot;,
           &quot;kind&quot;: &quot;claim&quot;,
           &quot;principal&quot;: &quot;sender&quot;,
-          &quot;permission_id&quot;: &quot;b8e9bce3ff6b439e92bf49039ca9eb08&quot;,
-          &quot;root_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-          &quot;action_id&quot;: &quot;rbd2cf7c178-worker-1-0&quot;,
+          &quot;permission_id&quot;: &quot;781832e6c9bc45a28d5d3fa58a7d0998&quot;,
+          &quot;root_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+          &quot;action_id&quot;: &quot;r4904263866-worker-1-0&quot;,
           &quot;policy_version&quot;: 1,
           &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
           &quot;reason&quot;: &quot;ok&quot;,
           &quot;seq&quot;: 4,
-          &quot;at&quot;: &quot;2026-11-14T22:17:42.820000Z&quot;,
+          &quot;at&quot;: &quot;2026-11-14T22:32:01.099000Z&quot;,
           &quot;detail&quot;: {}
         },
         {
-          &quot;_id&quot;: &quot;6af8de071874dbf754a5ca2e&quot;,
-          &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+          &quot;_id&quot;: &quot;6af8e1625be913aa78ab2744&quot;,
+          &quot;run_id&quot;: &quot;r4904263866&quot;,
           &quot;kind&quot;: &quot;outcome&quot;,
           &quot;principal&quot;: &quot;agent:worker-1&quot;,
-          &quot;permission_id&quot;: &quot;b8e9bce3ff6b439e92bf49039ca9eb08&quot;,
-          &quot;root_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-          &quot;action_id&quot;: &quot;rbd2cf7c178-worker-1-0&quot;,
+          &quot;permission_id&quot;: &quot;781832e6c9bc45a28d5d3fa58a7d0998&quot;,
+          &quot;root_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+          &quot;action_id&quot;: &quot;r4904263866-worker-1-0&quot;,
           &quot;policy_version&quot;: 1,
           &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
           &quot;reason&quot;: &quot;ok&quot;,
           &quot;seq&quot;: 5,
-          &quot;at&quot;: &quot;2026-11-14T22:17:43.676000Z&quot;,
+          &quot;at&quot;: &quot;2026-11-14T22:32:02.062000Z&quot;,
           &quot;detail&quot;: {
             &quot;state&quot;: &quot;applied&quot;,
             &quot;evidence&quot;: {
-              &quot;action_id&quot;: &quot;rbd2cf7c178-worker-1-0&quot;,
+              &quot;action_id&quot;: &quot;r4904263866-worker-1-0&quot;,
               &quot;system&quot;: &quot;cluster&quot;,
-              &quot;at_epoch&quot;: 1794694663.5390751,
-              &quot;applied&quot;: true,
-              &quot;reason&quot;: &quot;ok&quot;,
+              &quot;at_epoch&quot;: 1794695521.888214,
               &quot;deployment&quot;: &quot;checkout-api&quot;,
-              &quot;before&quot;: {
-                &quot;image&quot;: &quot;stopline/checkout:v2&quot;,
-                &quot;version&quot;: &quot;v2&quot;,
-                &quot;revision&quot;: 1,
-                &quot;restarted_at&quot;: null,
-                &quot;action_id&quot;: null,
-                &quot;ready&quot;: true
-              },
-              &quot;after&quot;: {
-                &quot;image&quot;: &quot;stopline/checkout:v1&quot;,
-                &quot;version&quot;: &quot;v1&quot;,
-                &quot;revision&quot;: 2,
-                &quot;restarted_at&quot;: null,
-                &quot;action_id&quot;: &quot;rbd2cf7c178-worker-1-0&quot;,
-                &quot;ready&quot;: true
-              },
-              &quot;log_id&quot;: 1
+              &quot;generation&quot;: 2,
+              &quot;image&quot;: &quot;stopline/checkout:v1&quot;
             }
           }
         }
       ]
     },
     {
-      &quot;_id&quot;: &quot;rbd2cf7c178-worker-2-0&quot;,
-      &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+      &quot;_id&quot;: &quot;r4904263866-worker-2-0&quot;,
+      &quot;run_id&quot;: &quot;r4904263866&quot;,
       &quot;mode&quot;: &quot;stopline&quot;,
-      &quot;root_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-      &quot;permission_id&quot;: &quot;e817b96334e34b039e4c43ef247dd971&quot;,
+      &quot;root_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+      &quot;permission_id&quot;: &quot;657584c117f046e4be27315e2ddaff02&quot;,
       &quot;chain&quot;: [
         {
-          &quot;permission_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
+          &quot;permission_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
           &quot;holder&quot;: &quot;person:operator&quot;,
           &quot;grantor&quot;: &quot;person:operator&quot;,
           &quot;missing&quot;: false
         },
         {
-          &quot;permission_id&quot;: &quot;7e75fba3819c48f986ff9a3978e6183e&quot;,
+          &quot;permission_id&quot;: &quot;1a729349142d487dba7b6c6dd18899a1&quot;,
           &quot;holder&quot;: &quot;agent:repair&quot;,
           &quot;grantor&quot;: &quot;person:operator&quot;,
           &quot;missing&quot;: false
         },
         {
-          &quot;permission_id&quot;: &quot;e817b96334e34b039e4c43ef247dd971&quot;,
+          &quot;permission_id&quot;: &quot;657584c117f046e4be27315e2ddaff02&quot;,
           &quot;holder&quot;: &quot;agent:worker-2&quot;,
           &quot;grantor&quot;: &quot;agent:repair&quot;,
           &quot;missing&quot;: false
@@ -347,9 +296,9 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
       &quot;admitted_seq&quot;: 5,
       &quot;state&quot;: &quot;applied&quot;,
       &quot;evidence&quot;: {
-        &quot;action_id&quot;: &quot;rbd2cf7c178-worker-2-0&quot;,
+        &quot;action_id&quot;: &quot;r4904263866-worker-2-0&quot;,
         &quot;system&quot;: &quot;router&quot;,
-        &quot;at_epoch&quot;: 1794694668.6195369,
+        &quot;at_epoch&quot;: 1794695526.902803,
         &quot;applied&quot;: true,
         &quot;reason&quot;: &quot;ok&quot;,
         &quot;before&quot;: {
@@ -367,39 +316,39 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
       &quot;policy_version&quot;: 1,
       &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
       &quot;claimed_by&quot;: &quot;sender&quot;,
-      &quot;admitted_at&quot;: &quot;2026-11-14T22:17:42.992000Z&quot;,
-      &quot;sent_at&quot;: &quot;2026-11-14T22:17:43.938000Z&quot;,
-      &quot;finished_at&quot;: &quot;2026-11-14T22:17:58.440000Z&quot;,
-      &quot;action_id&quot;: &quot;rbd2cf7c178-worker-2-0&quot;,
-      &quot;permission_id&quot;: &quot;e817b96334e34b039e4c43ef247dd971&quot;,
+      &quot;admitted_at&quot;: &quot;2026-11-14T22:32:01.352000Z&quot;,
+      &quot;sent_at&quot;: &quot;2026-11-14T22:32:02.310000Z&quot;,
+      &quot;finished_at&quot;: &quot;2026-11-14T22:32:16.644000Z&quot;,
+      &quot;action_id&quot;: &quot;r4904263866-worker-2-0&quot;,
+      &quot;permission_id&quot;: &quot;657584c117f046e4be27315e2ddaff02&quot;,
       &quot;chain_ids&quot;: [
-        &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-        &quot;7e75fba3819c48f986ff9a3978e6183e&quot;,
-        &quot;e817b96334e34b039e4c43ef247dd971&quot;
+        &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+        &quot;1a729349142d487dba7b6c6dd18899a1&quot;,
+        &quot;657584c117f046e4be27315e2ddaff02&quot;
       ],
       &quot;decision&quot;: &quot;allowed&quot;,
       &quot;counter&quot;: 5,
-      &quot;at&quot;: &quot;2026-11-14T22:17:42.992000Z&quot;,
+      &quot;at&quot;: &quot;2026-11-14T22:32:01.352000Z&quot;,
       &quot;outcome&quot;: &quot;completed&quot;,
       &quot;reason&quot;: &quot;ok&quot;,
       &quot;stopped&quot;: null,
       &quot;undone_by&quot;: [
-        &quot;rbd2cf7c178-worker-2-0-undo&quot;
+        &quot;r4904263866-worker-2-0-undo&quot;
       ],
       &quot;audit&quot;: [
         {
-          &quot;_id&quot;: &quot;6af8de0700f5288659a3857b&quot;,
-          &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+          &quot;_id&quot;: &quot;6af8e16118a57509624d2841&quot;,
+          &quot;run_id&quot;: &quot;r4904263866&quot;,
           &quot;kind&quot;: &quot;allow&quot;,
           &quot;principal&quot;: &quot;agent:worker-2&quot;,
-          &quot;permission_id&quot;: &quot;e817b96334e34b039e4c43ef247dd971&quot;,
-          &quot;root_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-          &quot;action_id&quot;: &quot;rbd2cf7c178-worker-2-0&quot;,
+          &quot;permission_id&quot;: &quot;657584c117f046e4be27315e2ddaff02&quot;,
+          &quot;root_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+          &quot;action_id&quot;: &quot;r4904263866-worker-2-0&quot;,
           &quot;policy_version&quot;: 1,
           &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
           &quot;reason&quot;: &quot;ok&quot;,
           &quot;seq&quot;: 5,
-          &quot;at&quot;: &quot;2026-11-14T22:17:42.992000Z&quot;,
+          &quot;at&quot;: &quot;2026-11-14T22:32:01.352000Z&quot;,
           &quot;detail&quot;: {
             &quot;tool&quot;: &quot;shift_traffic&quot;,
             &quot;target&quot;: &quot;router/region-b&quot;,
@@ -407,46 +356,46 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
               &quot;percent&quot;: 25
             },
             &quot;chain&quot;: [
-              &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-              &quot;7e75fba3819c48f986ff9a3978e6183e&quot;,
-              &quot;e817b96334e34b039e4c43ef247dd971&quot;
+              &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+              &quot;1a729349142d487dba7b6c6dd18899a1&quot;,
+              &quot;657584c117f046e4be27315e2ddaff02&quot;
             ]
           }
         },
         {
-          &quot;_id&quot;: &quot;6af8de071874dbf754a5ca2f&quot;,
-          &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+          &quot;_id&quot;: &quot;6af8e1625be913aa78ab2745&quot;,
+          &quot;run_id&quot;: &quot;r4904263866&quot;,
           &quot;kind&quot;: &quot;claim&quot;,
           &quot;principal&quot;: &quot;sender&quot;,
-          &quot;permission_id&quot;: &quot;e817b96334e34b039e4c43ef247dd971&quot;,
-          &quot;root_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-          &quot;action_id&quot;: &quot;rbd2cf7c178-worker-2-0&quot;,
+          &quot;permission_id&quot;: &quot;657584c117f046e4be27315e2ddaff02&quot;,
+          &quot;root_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+          &quot;action_id&quot;: &quot;r4904263866-worker-2-0&quot;,
           &quot;policy_version&quot;: 1,
           &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
           &quot;reason&quot;: &quot;ok&quot;,
           &quot;seq&quot;: 5,
-          &quot;at&quot;: &quot;2026-11-14T22:17:43.938000Z&quot;,
+          &quot;at&quot;: &quot;2026-11-14T22:32:02.310000Z&quot;,
           &quot;detail&quot;: {}
         },
         {
-          &quot;_id&quot;: &quot;6af8de161874dbf754a5ca33&quot;,
-          &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+          &quot;_id&quot;: &quot;6af8e1705be913aa78ab2749&quot;,
+          &quot;run_id&quot;: &quot;r4904263866&quot;,
           &quot;kind&quot;: &quot;outcome&quot;,
           &quot;principal&quot;: &quot;agent:worker-2&quot;,
-          &quot;permission_id&quot;: &quot;e817b96334e34b039e4c43ef247dd971&quot;,
-          &quot;root_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-          &quot;action_id&quot;: &quot;rbd2cf7c178-worker-2-0&quot;,
+          &quot;permission_id&quot;: &quot;657584c117f046e4be27315e2ddaff02&quot;,
+          &quot;root_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+          &quot;action_id&quot;: &quot;r4904263866-worker-2-0&quot;,
           &quot;policy_version&quot;: 1,
           &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
           &quot;reason&quot;: &quot;ok&quot;,
           &quot;seq&quot;: 7,
-          &quot;at&quot;: &quot;2026-11-14T22:17:58.440000Z&quot;,
+          &quot;at&quot;: &quot;2026-11-14T22:32:16.644000Z&quot;,
           &quot;detail&quot;: {
             &quot;state&quot;: &quot;applied&quot;,
             &quot;evidence&quot;: {
-              &quot;action_id&quot;: &quot;rbd2cf7c178-worker-2-0&quot;,
+              &quot;action_id&quot;: &quot;r4904263866-worker-2-0&quot;,
               &quot;system&quot;: &quot;router&quot;,
-              &quot;at_epoch&quot;: 1794694668.6195369,
+              &quot;at_epoch&quot;: 1794695526.902803,
               &quot;applied&quot;: true,
               &quot;reason&quot;: &quot;ok&quot;,
               &quot;before&quot;: {
@@ -464,26 +413,26 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
       ]
     },
     {
-      &quot;_id&quot;: &quot;rbd2cf7c178-worker-1-1&quot;,
-      &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+      &quot;_id&quot;: &quot;r4904263866-worker-1-1&quot;,
+      &quot;run_id&quot;: &quot;r4904263866&quot;,
       &quot;mode&quot;: &quot;stopline&quot;,
-      &quot;root_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-      &quot;permission_id&quot;: &quot;b8e9bce3ff6b439e92bf49039ca9eb08&quot;,
+      &quot;root_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+      &quot;permission_id&quot;: &quot;781832e6c9bc45a28d5d3fa58a7d0998&quot;,
       &quot;chain&quot;: [
         {
-          &quot;permission_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
+          &quot;permission_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
           &quot;holder&quot;: &quot;person:operator&quot;,
           &quot;grantor&quot;: &quot;person:operator&quot;,
           &quot;missing&quot;: false
         },
         {
-          &quot;permission_id&quot;: &quot;7e75fba3819c48f986ff9a3978e6183e&quot;,
+          &quot;permission_id&quot;: &quot;1a729349142d487dba7b6c6dd18899a1&quot;,
           &quot;holder&quot;: &quot;agent:repair&quot;,
           &quot;grantor&quot;: &quot;person:operator&quot;,
           &quot;missing&quot;: false
         },
         {
-          &quot;permission_id&quot;: &quot;b8e9bce3ff6b439e92bf49039ca9eb08&quot;,
+          &quot;permission_id&quot;: &quot;781832e6c9bc45a28d5d3fa58a7d0998&quot;,
           &quot;holder&quot;: &quot;agent:worker-1&quot;,
           &quot;grantor&quot;: &quot;agent:repair&quot;,
           &quot;missing&quot;: false
@@ -502,98 +451,98 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
       &quot;policy_version&quot;: 1,
       &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
       &quot;claimed_by&quot;: null,
-      &quot;admitted_at&quot;: &quot;2026-11-14T22:17:44.556000Z&quot;,
+      &quot;admitted_at&quot;: &quot;2026-11-14T22:32:02.923000Z&quot;,
       &quot;sent_at&quot;: null,
-      &quot;finished_at&quot;: &quot;2026-11-14T22:17:50.001000Z&quot;,
-      &quot;action_id&quot;: &quot;rbd2cf7c178-worker-1-1&quot;,
-      &quot;permission_id&quot;: &quot;b8e9bce3ff6b439e92bf49039ca9eb08&quot;,
+      &quot;finished_at&quot;: &quot;2026-11-14T22:32:08.163000Z&quot;,
+      &quot;action_id&quot;: &quot;r4904263866-worker-1-1&quot;,
+      &quot;permission_id&quot;: &quot;781832e6c9bc45a28d5d3fa58a7d0998&quot;,
       &quot;chain_ids&quot;: [
-        &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-        &quot;7e75fba3819c48f986ff9a3978e6183e&quot;,
-        &quot;b8e9bce3ff6b439e92bf49039ca9eb08&quot;
+        &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+        &quot;1a729349142d487dba7b6c6dd18899a1&quot;,
+        &quot;781832e6c9bc45a28d5d3fa58a7d0998&quot;
       ],
       &quot;decision&quot;: &quot;allowed&quot;,
       &quot;counter&quot;: 6,
-      &quot;at&quot;: &quot;2026-11-14T22:17:44.556000Z&quot;,
+      &quot;at&quot;: &quot;2026-11-14T22:32:02.923000Z&quot;,
       &quot;outcome&quot;: &quot;blocked&quot;,
       &quot;reason&quot;: &quot;cancelled_by_stop&quot;,
       &quot;stopped&quot;: {
         &quot;by&quot;: &quot;person:operator&quot;,
         &quot;counter&quot;: 7,
-        &quot;at&quot;: &quot;2026-11-14T22:17:50.234000Z&quot;
+        &quot;at&quot;: &quot;2026-11-14T22:32:08.328000Z&quot;
       },
       &quot;undone_by&quot;: [],
       &quot;audit&quot;: [
         {
-          &quot;_id&quot;: &quot;6af8de088f22ba09d2e41154&quot;,
-          &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+          &quot;_id&quot;: &quot;6af8e163db104b13d79c33a5&quot;,
+          &quot;run_id&quot;: &quot;r4904263866&quot;,
           &quot;kind&quot;: &quot;allow&quot;,
           &quot;principal&quot;: &quot;agent:worker-1&quot;,
-          &quot;permission_id&quot;: &quot;b8e9bce3ff6b439e92bf49039ca9eb08&quot;,
-          &quot;root_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-          &quot;action_id&quot;: &quot;rbd2cf7c178-worker-1-1&quot;,
+          &quot;permission_id&quot;: &quot;781832e6c9bc45a28d5d3fa58a7d0998&quot;,
+          &quot;root_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+          &quot;action_id&quot;: &quot;r4904263866-worker-1-1&quot;,
           &quot;policy_version&quot;: 1,
           &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
           &quot;reason&quot;: &quot;ok&quot;,
           &quot;seq&quot;: 6,
-          &quot;at&quot;: &quot;2026-11-14T22:17:44.556000Z&quot;,
+          &quot;at&quot;: &quot;2026-11-14T22:32:02.923000Z&quot;,
           &quot;detail&quot;: {
             &quot;tool&quot;: &quot;restart&quot;,
             &quot;target&quot;: &quot;cluster/checkout-worker&quot;,
             &quot;args&quot;: {},
             &quot;chain&quot;: [
-              &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-              &quot;7e75fba3819c48f986ff9a3978e6183e&quot;,
-              &quot;b8e9bce3ff6b439e92bf49039ca9eb08&quot;
+              &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+              &quot;1a729349142d487dba7b6c6dd18899a1&quot;,
+              &quot;781832e6c9bc45a28d5d3fa58a7d0998&quot;
             ]
           }
         },
         {
-          &quot;_id&quot;: &quot;6af8de101874dbf754a5ca32&quot;,
-          &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+          &quot;_id&quot;: &quot;6af8e16b5be913aa78ab2748&quot;,
+          &quot;run_id&quot;: &quot;r4904263866&quot;,
           &quot;kind&quot;: &quot;deny&quot;,
           &quot;principal&quot;: &quot;sender&quot;,
-          &quot;permission_id&quot;: &quot;b8e9bce3ff6b439e92bf49039ca9eb08&quot;,
-          &quot;root_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-          &quot;action_id&quot;: &quot;rbd2cf7c178-worker-1-1&quot;,
+          &quot;permission_id&quot;: &quot;781832e6c9bc45a28d5d3fa58a7d0998&quot;,
+          &quot;root_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+          &quot;action_id&quot;: &quot;r4904263866-worker-1-1&quot;,
           &quot;policy_version&quot;: 1,
           &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
           &quot;reason&quot;: &quot;cancelled_by_stop&quot;,
           &quot;seq&quot;: 6,
-          &quot;at&quot;: &quot;2026-11-14T22:17:52.780000Z&quot;,
+          &quot;at&quot;: &quot;2026-11-14T22:32:10.970000Z&quot;,
           &quot;detail&quot;: {
             &quot;state&quot;: &quot;cancelled&quot;,
             &quot;revoked_by&quot;: &quot;person:operator&quot;,
-            &quot;revoked_at&quot;: &quot;2026-11-14T22:17:50.234000Z&quot;,
+            &quot;revoked_at&quot;: &quot;2026-11-14T22:32:08.328000Z&quot;,
             &quot;revoked_at_seq&quot;: 7
           }
         }
       ]
     },
     {
-      &quot;action_id&quot;: &quot;rbd2cf7c178-worker-2-over-1&quot;,
+      &quot;action_id&quot;: &quot;r4904263866-worker-2-over-1&quot;,
       &quot;principal&quot;: &quot;agent:worker-2&quot;,
-      &quot;permission_id&quot;: &quot;e817b96334e34b039e4c43ef247dd971&quot;,
+      &quot;permission_id&quot;: &quot;657584c117f046e4be27315e2ddaff02&quot;,
       &quot;chain_ids&quot;: [
-        &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-        &quot;7e75fba3819c48f986ff9a3978e6183e&quot;,
-        &quot;e817b96334e34b039e4c43ef247dd971&quot;
+        &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+        &quot;1a729349142d487dba7b6c6dd18899a1&quot;,
+        &quot;657584c117f046e4be27315e2ddaff02&quot;
       ],
       &quot;chain&quot;: [
         {
-          &quot;permission_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
+          &quot;permission_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
           &quot;holder&quot;: &quot;person:operator&quot;,
           &quot;grantor&quot;: &quot;person:operator&quot;,
           &quot;missing&quot;: false
         },
         {
-          &quot;permission_id&quot;: &quot;7e75fba3819c48f986ff9a3978e6183e&quot;,
+          &quot;permission_id&quot;: &quot;1a729349142d487dba7b6c6dd18899a1&quot;,
           &quot;holder&quot;: &quot;agent:repair&quot;,
           &quot;grantor&quot;: &quot;person:operator&quot;,
           &quot;missing&quot;: false
         },
         {
-          &quot;permission_id&quot;: &quot;e817b96334e34b039e4c43ef247dd971&quot;,
+          &quot;permission_id&quot;: &quot;657584c117f046e4be27315e2ddaff02&quot;,
           &quot;holder&quot;: &quot;agent:worker-2&quot;,
           &quot;grantor&quot;: &quot;agent:repair&quot;,
           &quot;missing&quot;: false
@@ -609,7 +558,7 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
       &quot;policy_version&quot;: 1,
       &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
       &quot;counter&quot;: 7,
-      &quot;at&quot;: &quot;2026-11-14T22:17:46.485000Z&quot;,
+      &quot;at&quot;: &quot;2026-11-14T22:32:04.847000Z&quot;,
       &quot;reason&quot;: &quot;limit_exceeded&quot;,
       &quot;detail&quot;: {
         &quot;tool&quot;: &quot;shift_traffic&quot;,
@@ -618,9 +567,9 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
           &quot;percent&quot;: 90
         },
         &quot;chain&quot;: [
-          &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-          &quot;7e75fba3819c48f986ff9a3978e6183e&quot;,
-          &quot;e817b96334e34b039e4c43ef247dd971&quot;
+          &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+          &quot;1a729349142d487dba7b6c6dd18899a1&quot;,
+          &quot;657584c117f046e4be27315e2ddaff02&quot;
         ]
       },
       &quot;stopped&quot;: null,
@@ -631,18 +580,18 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
       &quot;undone_by&quot;: [],
       &quot;audit&quot;: [
         {
-          &quot;_id&quot;: &quot;6af8de0a1874dbf754a5ca30&quot;,
-          &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+          &quot;_id&quot;: &quot;6af8e1655be913aa78ab2746&quot;,
+          &quot;run_id&quot;: &quot;r4904263866&quot;,
           &quot;kind&quot;: &quot;deny&quot;,
           &quot;principal&quot;: &quot;agent:worker-2&quot;,
-          &quot;permission_id&quot;: &quot;e817b96334e34b039e4c43ef247dd971&quot;,
-          &quot;root_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-          &quot;action_id&quot;: &quot;rbd2cf7c178-worker-2-over-1&quot;,
+          &quot;permission_id&quot;: &quot;657584c117f046e4be27315e2ddaff02&quot;,
+          &quot;root_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+          &quot;action_id&quot;: &quot;r4904263866-worker-2-over-1&quot;,
           &quot;policy_version&quot;: 1,
           &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
           &quot;reason&quot;: &quot;limit_exceeded&quot;,
           &quot;seq&quot;: 7,
-          &quot;at&quot;: &quot;2026-11-14T22:17:46.485000Z&quot;,
+          &quot;at&quot;: &quot;2026-11-14T22:32:04.847000Z&quot;,
           &quot;detail&quot;: {
             &quot;tool&quot;: &quot;shift_traffic&quot;,
             &quot;target&quot;: &quot;router/region-b&quot;,
@@ -650,38 +599,38 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
               &quot;percent&quot;: 90
             },
             &quot;chain&quot;: [
-              &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-              &quot;7e75fba3819c48f986ff9a3978e6183e&quot;,
-              &quot;e817b96334e34b039e4c43ef247dd971&quot;
+              &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+              &quot;1a729349142d487dba7b6c6dd18899a1&quot;,
+              &quot;657584c117f046e4be27315e2ddaff02&quot;
             ]
           }
         }
       ]
     },
     {
-      &quot;action_id&quot;: &quot;rbd2cf7c178-worker-2-1&quot;,
+      &quot;action_id&quot;: &quot;r4904263866-worker-2-1&quot;,
       &quot;principal&quot;: &quot;agent:worker-2&quot;,
-      &quot;permission_id&quot;: &quot;e817b96334e34b039e4c43ef247dd971&quot;,
+      &quot;permission_id&quot;: &quot;657584c117f046e4be27315e2ddaff02&quot;,
       &quot;chain_ids&quot;: [
-        &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-        &quot;7e75fba3819c48f986ff9a3978e6183e&quot;,
-        &quot;e817b96334e34b039e4c43ef247dd971&quot;
+        &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+        &quot;1a729349142d487dba7b6c6dd18899a1&quot;,
+        &quot;657584c117f046e4be27315e2ddaff02&quot;
       ],
       &quot;chain&quot;: [
         {
-          &quot;permission_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
+          &quot;permission_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
           &quot;holder&quot;: &quot;person:operator&quot;,
           &quot;grantor&quot;: &quot;person:operator&quot;,
           &quot;missing&quot;: false
         },
         {
-          &quot;permission_id&quot;: &quot;7e75fba3819c48f986ff9a3978e6183e&quot;,
+          &quot;permission_id&quot;: &quot;1a729349142d487dba7b6c6dd18899a1&quot;,
           &quot;holder&quot;: &quot;agent:repair&quot;,
           &quot;grantor&quot;: &quot;person:operator&quot;,
           &quot;missing&quot;: false
         },
         {
-          &quot;permission_id&quot;: &quot;e817b96334e34b039e4c43ef247dd971&quot;,
+          &quot;permission_id&quot;: &quot;657584c117f046e4be27315e2ddaff02&quot;,
           &quot;holder&quot;: &quot;agent:worker-2&quot;,
           &quot;grantor&quot;: &quot;agent:repair&quot;,
           &quot;missing&quot;: false
@@ -697,7 +646,7 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
       &quot;policy_version&quot;: 1,
       &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
       &quot;counter&quot;: 8,
-      &quot;at&quot;: &quot;2026-11-14T22:17:56.345000Z&quot;,
+      &quot;at&quot;: &quot;2026-11-14T22:32:14.625000Z&quot;,
       &quot;reason&quot;: &quot;revoked&quot;,
       &quot;detail&quot;: {
         &quot;tool&quot;: &quot;shift_traffic&quot;,
@@ -706,18 +655,18 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
           &quot;percent&quot;: 50
         },
         &quot;revoked_by&quot;: &quot;person:operator&quot;,
-        &quot;revoked_at&quot;: &quot;2026-11-14T22:17:50.234000Z&quot;,
+        &quot;revoked_at&quot;: &quot;2026-11-14T22:32:08.328000Z&quot;,
         &quot;revoked_at_seq&quot;: 7,
         &quot;chain&quot;: [
-          &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-          &quot;7e75fba3819c48f986ff9a3978e6183e&quot;,
-          &quot;e817b96334e34b039e4c43ef247dd971&quot;
+          &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+          &quot;1a729349142d487dba7b6c6dd18899a1&quot;,
+          &quot;657584c117f046e4be27315e2ddaff02&quot;
         ]
       },
       &quot;stopped&quot;: {
         &quot;by&quot;: &quot;person:operator&quot;,
         &quot;counter&quot;: 7,
-        &quot;at&quot;: &quot;2026-11-14T22:17:50.234000Z&quot;
+        &quot;at&quot;: &quot;2026-11-14T22:32:08.328000Z&quot;
       },
       &quot;evidence&quot;: null,
       &quot;state&quot;: null,
@@ -726,18 +675,18 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
       &quot;undone_by&quot;: [],
       &quot;audit&quot;: [
         {
-          &quot;_id&quot;: &quot;6af8de14512def36ffaf3b2b&quot;,
-          &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+          &quot;_id&quot;: &quot;6af8e16ed1877eac57c38ed6&quot;,
+          &quot;run_id&quot;: &quot;r4904263866&quot;,
           &quot;kind&quot;: &quot;deny&quot;,
           &quot;principal&quot;: &quot;agent:worker-2&quot;,
-          &quot;permission_id&quot;: &quot;e817b96334e34b039e4c43ef247dd971&quot;,
-          &quot;root_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-          &quot;action_id&quot;: &quot;rbd2cf7c178-worker-2-1&quot;,
+          &quot;permission_id&quot;: &quot;657584c117f046e4be27315e2ddaff02&quot;,
+          &quot;root_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+          &quot;action_id&quot;: &quot;r4904263866-worker-2-1&quot;,
           &quot;policy_version&quot;: 1,
           &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
           &quot;reason&quot;: &quot;revoked&quot;,
           &quot;seq&quot;: 8,
-          &quot;at&quot;: &quot;2026-11-14T22:17:56.345000Z&quot;,
+          &quot;at&quot;: &quot;2026-11-14T22:32:14.625000Z&quot;,
           &quot;detail&quot;: {
             &quot;tool&quot;: &quot;shift_traffic&quot;,
             &quot;target&quot;: &quot;router/region-b&quot;,
@@ -745,26 +694,26 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
               &quot;percent&quot;: 50
             },
             &quot;revoked_by&quot;: &quot;person:operator&quot;,
-            &quot;revoked_at&quot;: &quot;2026-11-14T22:17:50.234000Z&quot;,
+            &quot;revoked_at&quot;: &quot;2026-11-14T22:32:08.328000Z&quot;,
             &quot;revoked_at_seq&quot;: 7,
             &quot;chain&quot;: [
-              &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-              &quot;7e75fba3819c48f986ff9a3978e6183e&quot;,
-              &quot;e817b96334e34b039e4c43ef247dd971&quot;
+              &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+              &quot;1a729349142d487dba7b6c6dd18899a1&quot;,
+              &quot;657584c117f046e4be27315e2ddaff02&quot;
             ]
           }
         }
       ]
     },
     {
-      &quot;_id&quot;: &quot;rbd2cf7c178-worker-2-0-undo&quot;,
-      &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+      &quot;_id&quot;: &quot;r4904263866-worker-2-0-undo&quot;,
+      &quot;run_id&quot;: &quot;r4904263866&quot;,
       &quot;mode&quot;: &quot;stopline&quot;,
-      &quot;root_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-      &quot;permission_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
+      &quot;root_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+      &quot;permission_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
       &quot;chain&quot;: [
         {
-          &quot;permission_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
+          &quot;permission_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
           &quot;holder&quot;: &quot;person:operator&quot;,
           &quot;grantor&quot;: &quot;person:operator&quot;,
           &quot;missing&quot;: false
@@ -780,16 +729,16 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
             &quot;region-a&quot;: 75,
             &quot;region-b&quot;: 25
           },
-          &quot;last_action_id&quot;: &quot;rbd2cf7c178-worker-2-0&quot;
+          &quot;last_action_id&quot;: &quot;r4904263866-worker-2-0&quot;
         }
       },
-      &quot;args_hash&quot;: &quot;2c38284a8a146e21433cfd7e1729eeff577b550f84ff682e4482aa7d985ca20e&quot;,
+      &quot;args_hash&quot;: &quot;f53fce10d93dfc65babd6e410ca74809c791e2cc529752624585477c87cc6648&quot;,
       &quot;admitted_seq&quot;: 8,
       &quot;state&quot;: &quot;applied&quot;,
       &quot;evidence&quot;: {
-        &quot;action_id&quot;: &quot;rbd2cf7c178-worker-2-0-undo&quot;,
+        &quot;action_id&quot;: &quot;r4904263866-worker-2-0-undo&quot;,
         &quot;system&quot;: &quot;router&quot;,
-        &quot;at_epoch&quot;: 1794694682.06564,
+        &quot;at_epoch&quot;: 1794695540.173027,
         &quot;applied&quot;: true,
         &quot;reason&quot;: &quot;ok&quot;,
         &quot;before&quot;: {
@@ -802,42 +751,42 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
         },
         &quot;log_id&quot;: 2
       },
-      &quot;reverses&quot;: &quot;rbd2cf7c178-worker-2-0&quot;,
+      &quot;reverses&quot;: &quot;r4904263866-worker-2-0&quot;,
       &quot;undo&quot;: null,
       &quot;policy_version&quot;: 1,
       &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
       &quot;claimed_by&quot;: &quot;sender&quot;,
-      &quot;admitted_at&quot;: &quot;2026-11-14T22:18:00.721000Z&quot;,
-      &quot;sent_at&quot;: &quot;2026-11-14T22:18:01.424000Z&quot;,
-      &quot;finished_at&quot;: &quot;2026-11-14T22:18:02.217000Z&quot;,
-      &quot;action_id&quot;: &quot;rbd2cf7c178-worker-2-0-undo&quot;,
-      &quot;permission_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
+      &quot;admitted_at&quot;: &quot;2026-11-14T22:32:18.833000Z&quot;,
+      &quot;sent_at&quot;: &quot;2026-11-14T22:32:19.531000Z&quot;,
+      &quot;finished_at&quot;: &quot;2026-11-14T22:32:20.307000Z&quot;,
+      &quot;action_id&quot;: &quot;r4904263866-worker-2-0-undo&quot;,
+      &quot;permission_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
       &quot;chain_ids&quot;: [
-        &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;
+        &quot;4edb59feb2de4837bd96354b356cabcc&quot;
       ],
       &quot;decision&quot;: &quot;allowed&quot;,
       &quot;counter&quot;: 8,
-      &quot;at&quot;: &quot;2026-11-14T22:18:00.721000Z&quot;,
+      &quot;at&quot;: &quot;2026-11-14T22:32:18.833000Z&quot;,
       &quot;outcome&quot;: &quot;completed&quot;,
       &quot;reason&quot;: &quot;ok&quot;,
       &quot;stopped&quot;: null,
       &quot;undone_by&quot;: [],
       &quot;audit&quot;: [
         {
-          &quot;_id&quot;: &quot;6af8de191874dbf754a5ca35&quot;,
-          &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+          &quot;_id&quot;: &quot;6af8e1735be913aa78ab274b&quot;,
+          &quot;run_id&quot;: &quot;r4904263866&quot;,
           &quot;kind&quot;: &quot;undo&quot;,
           &quot;principal&quot;: &quot;person:operator&quot;,
-          &quot;permission_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-          &quot;root_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-          &quot;action_id&quot;: &quot;rbd2cf7c178-worker-2-0-undo&quot;,
+          &quot;permission_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+          &quot;root_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+          &quot;action_id&quot;: &quot;r4904263866-worker-2-0-undo&quot;,
           &quot;policy_version&quot;: 1,
           &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
           &quot;reason&quot;: &quot;ok&quot;,
           &quot;seq&quot;: 8,
-          &quot;at&quot;: &quot;2026-11-14T22:18:00.363000Z&quot;,
+          &quot;at&quot;: &quot;2026-11-14T22:32:18.488000Z&quot;,
           &quot;detail&quot;: {
-            &quot;reverses&quot;: &quot;rbd2cf7c178-worker-2-0&quot;,
+            &quot;reverses&quot;: &quot;r4904263866-worker-2-0&quot;,
             &quot;tool&quot;: &quot;shift_traffic&quot;,
             &quot;target&quot;: &quot;router/region-b&quot;,
             &quot;args&quot;: {
@@ -846,18 +795,18 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
           }
         },
         {
-          &quot;_id&quot;: &quot;6af8de191874dbf754a5ca34&quot;,
-          &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+          &quot;_id&quot;: &quot;6af8e1735be913aa78ab274a&quot;,
+          &quot;run_id&quot;: &quot;r4904263866&quot;,
           &quot;kind&quot;: &quot;allow&quot;,
           &quot;principal&quot;: &quot;person:operator&quot;,
-          &quot;permission_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-          &quot;root_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-          &quot;action_id&quot;: &quot;rbd2cf7c178-worker-2-0-undo&quot;,
+          &quot;permission_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+          &quot;root_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+          &quot;action_id&quot;: &quot;r4904263866-worker-2-0-undo&quot;,
           &quot;policy_version&quot;: 1,
           &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
           &quot;reason&quot;: &quot;ok&quot;,
           &quot;seq&quot;: 8,
-          &quot;at&quot;: &quot;2026-11-14T22:18:00.721000Z&quot;,
+          &quot;at&quot;: &quot;2026-11-14T22:32:18.833000Z&quot;,
           &quot;detail&quot;: {
             &quot;tool&quot;: &quot;shift_traffic&quot;,
             &quot;target&quot;: &quot;router/region-b&quot;,
@@ -868,48 +817,48 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
                   &quot;region-a&quot;: 75,
                   &quot;region-b&quot;: 25
                 },
-                &quot;last_action_id&quot;: &quot;rbd2cf7c178-worker-2-0&quot;
+                &quot;last_action_id&quot;: &quot;r4904263866-worker-2-0&quot;
               }
             },
             &quot;chain&quot;: [
-              &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;
+              &quot;4edb59feb2de4837bd96354b356cabcc&quot;
             ]
           }
         },
         {
-          &quot;_id&quot;: &quot;6af8de191874dbf754a5ca36&quot;,
-          &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+          &quot;_id&quot;: &quot;6af8e1735be913aa78ab274c&quot;,
+          &quot;run_id&quot;: &quot;r4904263866&quot;,
           &quot;kind&quot;: &quot;claim&quot;,
           &quot;principal&quot;: &quot;sender&quot;,
-          &quot;permission_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-          &quot;root_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-          &quot;action_id&quot;: &quot;rbd2cf7c178-worker-2-0-undo&quot;,
+          &quot;permission_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+          &quot;root_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+          &quot;action_id&quot;: &quot;r4904263866-worker-2-0-undo&quot;,
           &quot;policy_version&quot;: 1,
           &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
           &quot;reason&quot;: &quot;ok&quot;,
           &quot;seq&quot;: 8,
-          &quot;at&quot;: &quot;2026-11-14T22:18:01.424000Z&quot;,
+          &quot;at&quot;: &quot;2026-11-14T22:32:19.531000Z&quot;,
           &quot;detail&quot;: {}
         },
         {
-          &quot;_id&quot;: &quot;6af8de1a1874dbf754a5ca37&quot;,
-          &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+          &quot;_id&quot;: &quot;6af8e1745be913aa78ab274d&quot;,
+          &quot;run_id&quot;: &quot;r4904263866&quot;,
           &quot;kind&quot;: &quot;outcome&quot;,
           &quot;principal&quot;: &quot;person:operator&quot;,
-          &quot;permission_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-          &quot;root_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-          &quot;action_id&quot;: &quot;rbd2cf7c178-worker-2-0-undo&quot;,
+          &quot;permission_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+          &quot;root_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+          &quot;action_id&quot;: &quot;r4904263866-worker-2-0-undo&quot;,
           &quot;policy_version&quot;: 1,
           &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
           &quot;reason&quot;: &quot;ok&quot;,
           &quot;seq&quot;: 8,
-          &quot;at&quot;: &quot;2026-11-14T22:18:02.217000Z&quot;,
+          &quot;at&quot;: &quot;2026-11-14T22:32:20.307000Z&quot;,
           &quot;detail&quot;: {
             &quot;state&quot;: &quot;applied&quot;,
             &quot;evidence&quot;: {
-              &quot;action_id&quot;: &quot;rbd2cf7c178-worker-2-0-undo&quot;,
+              &quot;action_id&quot;: &quot;r4904263866-worker-2-0-undo&quot;,
               &quot;system&quot;: &quot;router&quot;,
-              &quot;at_epoch&quot;: 1794694682.06564,
+              &quot;at_epoch&quot;: 1794695540.173027,
               &quot;applied&quot;: true,
               &quot;reason&quot;: &quot;ok&quot;,
               &quot;before&quot;: {
@@ -927,15 +876,15 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
       ]
     },
     {
-      &quot;action_id&quot;: &quot;rbd2cf7c178-worker-1-0-undo&quot;,
+      &quot;action_id&quot;: &quot;r4904263866-worker-1-0-undo&quot;,
       &quot;principal&quot;: &quot;person:operator&quot;,
-      &quot;permission_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
+      &quot;permission_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
       &quot;chain_ids&quot;: [
-        &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;
+        &quot;4edb59feb2de4837bd96354b356cabcc&quot;
       ],
       &quot;chain&quot;: [
         {
-          &quot;permission_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
+          &quot;permission_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
           &quot;holder&quot;: &quot;person:operator&quot;,
           &quot;grantor&quot;: &quot;person:operator&quot;,
           &quot;missing&quot;: false
@@ -951,10 +900,10 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
       &quot;policy_version&quot;: 1,
       &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
       &quot;counter&quot;: null,
-      &quot;at&quot;: &quot;2026-11-14T22:18:02.820000Z&quot;,
+      &quot;at&quot;: &quot;2026-11-14T22:32:20.932000Z&quot;,
       &quot;reason&quot;: &quot;no_undo&quot;,
       &quot;detail&quot;: {
-        &quot;reverses&quot;: &quot;rbd2cf7c178-worker-1-0&quot;,
+        &quot;reverses&quot;: &quot;r4904263866-worker-1-0&quot;,
         &quot;tool&quot;: &quot;rollback&quot;,
         &quot;target&quot;: &quot;cluster/checkout-api&quot;,
         &quot;args&quot;: {
@@ -969,20 +918,20 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
       &quot;undone_by&quot;: [],
       &quot;audit&quot;: [
         {
-          &quot;_id&quot;: &quot;6af8de1b1874dbf754a5ca38&quot;,
-          &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+          &quot;_id&quot;: &quot;6af8e1755be913aa78ab274e&quot;,
+          &quot;run_id&quot;: &quot;r4904263866&quot;,
           &quot;kind&quot;: &quot;deny&quot;,
           &quot;principal&quot;: &quot;person:operator&quot;,
-          &quot;permission_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-          &quot;root_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-          &quot;action_id&quot;: &quot;rbd2cf7c178-worker-1-0-undo&quot;,
+          &quot;permission_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+          &quot;root_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+          &quot;action_id&quot;: &quot;r4904263866-worker-1-0-undo&quot;,
           &quot;policy_version&quot;: 1,
           &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
           &quot;reason&quot;: &quot;no_undo&quot;,
           &quot;seq&quot;: null,
-          &quot;at&quot;: &quot;2026-11-14T22:18:02.820000Z&quot;,
+          &quot;at&quot;: &quot;2026-11-14T22:32:20.932000Z&quot;,
           &quot;detail&quot;: {
-            &quot;reverses&quot;: &quot;rbd2cf7c178-worker-1-0&quot;,
+            &quot;reverses&quot;: &quot;r4904263866-worker-1-0&quot;,
             &quot;tool&quot;: &quot;rollback&quot;,
             &quot;target&quot;: &quot;cluster/checkout-api&quot;,
             &quot;args&quot;: {
@@ -995,72 +944,72 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
   ],
   &quot;audit&quot;: [
     {
-      &quot;_id&quot;: &quot;6af8de021874dbf754a5ca2a&quot;,
-      &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+      &quot;_id&quot;: &quot;6af8e15b5be913aa78ab2740&quot;,
+      &quot;run_id&quot;: &quot;r4904263866&quot;,
       &quot;kind&quot;: &quot;hand_down&quot;,
       &quot;principal&quot;: &quot;person:operator&quot;,
-      &quot;permission_id&quot;: &quot;7e75fba3819c48f986ff9a3978e6183e&quot;,
-      &quot;root_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
+      &quot;permission_id&quot;: &quot;1a729349142d487dba7b6c6dd18899a1&quot;,
+      &quot;root_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
       &quot;action_id&quot;: null,
       &quot;policy_version&quot;: 1,
       &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
       &quot;reason&quot;: &quot;ok&quot;,
       &quot;seq&quot;: 1,
-      &quot;at&quot;: &quot;2026-11-14T22:17:38.184000Z&quot;,
+      &quot;at&quot;: &quot;2026-11-14T22:31:55.760000Z&quot;,
       &quot;detail&quot;: {
-        &quot;parent_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
+        &quot;parent_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
         &quot;holder&quot;: &quot;agent:repair&quot;
       }
     },
     {
-      &quot;_id&quot;: &quot;6af8de031874dbf754a5ca2b&quot;,
-      &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+      &quot;_id&quot;: &quot;6af8e15d5be913aa78ab2741&quot;,
+      &quot;run_id&quot;: &quot;r4904263866&quot;,
       &quot;kind&quot;: &quot;hand_down&quot;,
       &quot;principal&quot;: &quot;agent:repair&quot;,
-      &quot;permission_id&quot;: &quot;b8e9bce3ff6b439e92bf49039ca9eb08&quot;,
-      &quot;root_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
+      &quot;permission_id&quot;: &quot;781832e6c9bc45a28d5d3fa58a7d0998&quot;,
+      &quot;root_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
       &quot;action_id&quot;: null,
       &quot;policy_version&quot;: 1,
       &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
       &quot;reason&quot;: &quot;ok&quot;,
       &quot;seq&quot;: 2,
-      &quot;at&quot;: &quot;2026-11-14T22:17:38.965000Z&quot;,
+      &quot;at&quot;: &quot;2026-11-14T22:31:57.223000Z&quot;,
       &quot;detail&quot;: {
-        &quot;parent_id&quot;: &quot;7e75fba3819c48f986ff9a3978e6183e&quot;,
+        &quot;parent_id&quot;: &quot;1a729349142d487dba7b6c6dd18899a1&quot;,
         &quot;holder&quot;: &quot;agent:worker-1&quot;
       }
     },
     {
-      &quot;_id&quot;: &quot;6af8de031874dbf754a5ca2c&quot;,
-      &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+      &quot;_id&quot;: &quot;6af8e15e5be913aa78ab2742&quot;,
+      &quot;run_id&quot;: &quot;r4904263866&quot;,
       &quot;kind&quot;: &quot;hand_down&quot;,
       &quot;principal&quot;: &quot;agent:repair&quot;,
-      &quot;permission_id&quot;: &quot;e817b96334e34b039e4c43ef247dd971&quot;,
-      &quot;root_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
+      &quot;permission_id&quot;: &quot;657584c117f046e4be27315e2ddaff02&quot;,
+      &quot;root_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
       &quot;action_id&quot;: null,
       &quot;policy_version&quot;: 1,
       &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
       &quot;reason&quot;: &quot;ok&quot;,
       &quot;seq&quot;: 3,
-      &quot;at&quot;: &quot;2026-11-14T22:17:39.573000Z&quot;,
+      &quot;at&quot;: &quot;2026-11-14T22:31:57.851000Z&quot;,
       &quot;detail&quot;: {
-        &quot;parent_id&quot;: &quot;7e75fba3819c48f986ff9a3978e6183e&quot;,
+        &quot;parent_id&quot;: &quot;1a729349142d487dba7b6c6dd18899a1&quot;,
         &quot;holder&quot;: &quot;agent:worker-2&quot;
       }
     },
     {
-      &quot;_id&quot;: &quot;6af8de068f22ba09d2e41153&quot;,
-      &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+      &quot;_id&quot;: &quot;6af8e160db104b13d79c33a4&quot;,
+      &quot;run_id&quot;: &quot;r4904263866&quot;,
       &quot;kind&quot;: &quot;allow&quot;,
       &quot;principal&quot;: &quot;agent:worker-1&quot;,
-      &quot;permission_id&quot;: &quot;b8e9bce3ff6b439e92bf49039ca9eb08&quot;,
-      &quot;root_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-      &quot;action_id&quot;: &quot;rbd2cf7c178-worker-1-0&quot;,
+      &quot;permission_id&quot;: &quot;781832e6c9bc45a28d5d3fa58a7d0998&quot;,
+      &quot;root_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+      &quot;action_id&quot;: &quot;r4904263866-worker-1-0&quot;,
       &quot;policy_version&quot;: 1,
       &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
       &quot;reason&quot;: &quot;ok&quot;,
       &quot;seq&quot;: 4,
-      &quot;at&quot;: &quot;2026-11-14T22:17:42.299000Z&quot;,
+      &quot;at&quot;: &quot;2026-11-14T22:32:00.570000Z&quot;,
       &quot;detail&quot;: {
         &quot;tool&quot;: &quot;rollback&quot;,
         &quot;target&quot;: &quot;cluster/checkout-api&quot;,
@@ -1068,40 +1017,40 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
           &quot;to_version&quot;: &quot;v1&quot;
         },
         &quot;chain&quot;: [
-          &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-          &quot;7e75fba3819c48f986ff9a3978e6183e&quot;,
-          &quot;b8e9bce3ff6b439e92bf49039ca9eb08&quot;
+          &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+          &quot;1a729349142d487dba7b6c6dd18899a1&quot;,
+          &quot;781832e6c9bc45a28d5d3fa58a7d0998&quot;
         ]
       }
     },
     {
-      &quot;_id&quot;: &quot;6af8de061874dbf754a5ca2d&quot;,
-      &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+      &quot;_id&quot;: &quot;6af8e1615be913aa78ab2743&quot;,
+      &quot;run_id&quot;: &quot;r4904263866&quot;,
       &quot;kind&quot;: &quot;claim&quot;,
       &quot;principal&quot;: &quot;sender&quot;,
-      &quot;permission_id&quot;: &quot;b8e9bce3ff6b439e92bf49039ca9eb08&quot;,
-      &quot;root_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-      &quot;action_id&quot;: &quot;rbd2cf7c178-worker-1-0&quot;,
+      &quot;permission_id&quot;: &quot;781832e6c9bc45a28d5d3fa58a7d0998&quot;,
+      &quot;root_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+      &quot;action_id&quot;: &quot;r4904263866-worker-1-0&quot;,
       &quot;policy_version&quot;: 1,
       &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
       &quot;reason&quot;: &quot;ok&quot;,
       &quot;seq&quot;: 4,
-      &quot;at&quot;: &quot;2026-11-14T22:17:42.820000Z&quot;,
+      &quot;at&quot;: &quot;2026-11-14T22:32:01.099000Z&quot;,
       &quot;detail&quot;: {}
     },
     {
-      &quot;_id&quot;: &quot;6af8de0700f5288659a3857b&quot;,
-      &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+      &quot;_id&quot;: &quot;6af8e16118a57509624d2841&quot;,
+      &quot;run_id&quot;: &quot;r4904263866&quot;,
       &quot;kind&quot;: &quot;allow&quot;,
       &quot;principal&quot;: &quot;agent:worker-2&quot;,
-      &quot;permission_id&quot;: &quot;e817b96334e34b039e4c43ef247dd971&quot;,
-      &quot;root_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-      &quot;action_id&quot;: &quot;rbd2cf7c178-worker-2-0&quot;,
+      &quot;permission_id&quot;: &quot;657584c117f046e4be27315e2ddaff02&quot;,
+      &quot;root_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+      &quot;action_id&quot;: &quot;r4904263866-worker-2-0&quot;,
       &quot;policy_version&quot;: 1,
       &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
       &quot;reason&quot;: &quot;ok&quot;,
       &quot;seq&quot;: 5,
-      &quot;at&quot;: &quot;2026-11-14T22:17:42.992000Z&quot;,
+      &quot;at&quot;: &quot;2026-11-14T22:32:01.352000Z&quot;,
       &quot;detail&quot;: {
         &quot;tool&quot;: &quot;shift_traffic&quot;,
         &quot;target&quot;: &quot;router/region-b&quot;,
@@ -1109,106 +1058,89 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
           &quot;percent&quot;: 25
         },
         &quot;chain&quot;: [
-          &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-          &quot;7e75fba3819c48f986ff9a3978e6183e&quot;,
-          &quot;e817b96334e34b039e4c43ef247dd971&quot;
+          &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+          &quot;1a729349142d487dba7b6c6dd18899a1&quot;,
+          &quot;657584c117f046e4be27315e2ddaff02&quot;
         ]
       }
     },
     {
-      &quot;_id&quot;: &quot;6af8de071874dbf754a5ca2e&quot;,
-      &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+      &quot;_id&quot;: &quot;6af8e1625be913aa78ab2744&quot;,
+      &quot;run_id&quot;: &quot;r4904263866&quot;,
       &quot;kind&quot;: &quot;outcome&quot;,
       &quot;principal&quot;: &quot;agent:worker-1&quot;,
-      &quot;permission_id&quot;: &quot;b8e9bce3ff6b439e92bf49039ca9eb08&quot;,
-      &quot;root_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-      &quot;action_id&quot;: &quot;rbd2cf7c178-worker-1-0&quot;,
+      &quot;permission_id&quot;: &quot;781832e6c9bc45a28d5d3fa58a7d0998&quot;,
+      &quot;root_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+      &quot;action_id&quot;: &quot;r4904263866-worker-1-0&quot;,
       &quot;policy_version&quot;: 1,
       &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
       &quot;reason&quot;: &quot;ok&quot;,
       &quot;seq&quot;: 5,
-      &quot;at&quot;: &quot;2026-11-14T22:17:43.676000Z&quot;,
+      &quot;at&quot;: &quot;2026-11-14T22:32:02.062000Z&quot;,
       &quot;detail&quot;: {
         &quot;state&quot;: &quot;applied&quot;,
         &quot;evidence&quot;: {
-          &quot;action_id&quot;: &quot;rbd2cf7c178-worker-1-0&quot;,
+          &quot;action_id&quot;: &quot;r4904263866-worker-1-0&quot;,
           &quot;system&quot;: &quot;cluster&quot;,
-          &quot;at_epoch&quot;: 1794694663.5390751,
-          &quot;applied&quot;: true,
-          &quot;reason&quot;: &quot;ok&quot;,
+          &quot;at_epoch&quot;: 1794695521.888214,
           &quot;deployment&quot;: &quot;checkout-api&quot;,
-          &quot;before&quot;: {
-            &quot;image&quot;: &quot;stopline/checkout:v2&quot;,
-            &quot;version&quot;: &quot;v2&quot;,
-            &quot;revision&quot;: 1,
-            &quot;restarted_at&quot;: null,
-            &quot;action_id&quot;: null,
-            &quot;ready&quot;: true
-          },
-          &quot;after&quot;: {
-            &quot;image&quot;: &quot;stopline/checkout:v1&quot;,
-            &quot;version&quot;: &quot;v1&quot;,
-            &quot;revision&quot;: 2,
-            &quot;restarted_at&quot;: null,
-            &quot;action_id&quot;: &quot;rbd2cf7c178-worker-1-0&quot;,
-            &quot;ready&quot;: true
-          },
-          &quot;log_id&quot;: 1
+          &quot;generation&quot;: 2,
+          &quot;image&quot;: &quot;stopline/checkout:v1&quot;
         }
       }
     },
     {
-      &quot;_id&quot;: &quot;6af8de071874dbf754a5ca2f&quot;,
-      &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+      &quot;_id&quot;: &quot;6af8e1625be913aa78ab2745&quot;,
+      &quot;run_id&quot;: &quot;r4904263866&quot;,
       &quot;kind&quot;: &quot;claim&quot;,
       &quot;principal&quot;: &quot;sender&quot;,
-      &quot;permission_id&quot;: &quot;e817b96334e34b039e4c43ef247dd971&quot;,
-      &quot;root_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-      &quot;action_id&quot;: &quot;rbd2cf7c178-worker-2-0&quot;,
+      &quot;permission_id&quot;: &quot;657584c117f046e4be27315e2ddaff02&quot;,
+      &quot;root_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+      &quot;action_id&quot;: &quot;r4904263866-worker-2-0&quot;,
       &quot;policy_version&quot;: 1,
       &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
       &quot;reason&quot;: &quot;ok&quot;,
       &quot;seq&quot;: 5,
-      &quot;at&quot;: &quot;2026-11-14T22:17:43.938000Z&quot;,
+      &quot;at&quot;: &quot;2026-11-14T22:32:02.310000Z&quot;,
       &quot;detail&quot;: {}
     },
     {
-      &quot;_id&quot;: &quot;6af8de088f22ba09d2e41154&quot;,
-      &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+      &quot;_id&quot;: &quot;6af8e163db104b13d79c33a5&quot;,
+      &quot;run_id&quot;: &quot;r4904263866&quot;,
       &quot;kind&quot;: &quot;allow&quot;,
       &quot;principal&quot;: &quot;agent:worker-1&quot;,
-      &quot;permission_id&quot;: &quot;b8e9bce3ff6b439e92bf49039ca9eb08&quot;,
-      &quot;root_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-      &quot;action_id&quot;: &quot;rbd2cf7c178-worker-1-1&quot;,
+      &quot;permission_id&quot;: &quot;781832e6c9bc45a28d5d3fa58a7d0998&quot;,
+      &quot;root_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+      &quot;action_id&quot;: &quot;r4904263866-worker-1-1&quot;,
       &quot;policy_version&quot;: 1,
       &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
       &quot;reason&quot;: &quot;ok&quot;,
       &quot;seq&quot;: 6,
-      &quot;at&quot;: &quot;2026-11-14T22:17:44.556000Z&quot;,
+      &quot;at&quot;: &quot;2026-11-14T22:32:02.923000Z&quot;,
       &quot;detail&quot;: {
         &quot;tool&quot;: &quot;restart&quot;,
         &quot;target&quot;: &quot;cluster/checkout-worker&quot;,
         &quot;args&quot;: {},
         &quot;chain&quot;: [
-          &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-          &quot;7e75fba3819c48f986ff9a3978e6183e&quot;,
-          &quot;b8e9bce3ff6b439e92bf49039ca9eb08&quot;
+          &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+          &quot;1a729349142d487dba7b6c6dd18899a1&quot;,
+          &quot;781832e6c9bc45a28d5d3fa58a7d0998&quot;
         ]
       }
     },
     {
-      &quot;_id&quot;: &quot;6af8de0a1874dbf754a5ca30&quot;,
-      &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+      &quot;_id&quot;: &quot;6af8e1655be913aa78ab2746&quot;,
+      &quot;run_id&quot;: &quot;r4904263866&quot;,
       &quot;kind&quot;: &quot;deny&quot;,
       &quot;principal&quot;: &quot;agent:worker-2&quot;,
-      &quot;permission_id&quot;: &quot;e817b96334e34b039e4c43ef247dd971&quot;,
-      &quot;root_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-      &quot;action_id&quot;: &quot;rbd2cf7c178-worker-2-over-1&quot;,
+      &quot;permission_id&quot;: &quot;657584c117f046e4be27315e2ddaff02&quot;,
+      &quot;root_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+      &quot;action_id&quot;: &quot;r4904263866-worker-2-over-1&quot;,
       &quot;policy_version&quot;: 1,
       &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
       &quot;reason&quot;: &quot;limit_exceeded&quot;,
       &quot;seq&quot;: 7,
-      &quot;at&quot;: &quot;2026-11-14T22:17:46.485000Z&quot;,
+      &quot;at&quot;: &quot;2026-11-14T22:32:04.847000Z&quot;,
       &quot;detail&quot;: {
         &quot;tool&quot;: &quot;shift_traffic&quot;,
         &quot;target&quot;: &quot;router/region-b&quot;,
@@ -1216,72 +1148,72 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
           &quot;percent&quot;: 90
         },
         &quot;chain&quot;: [
-          &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-          &quot;7e75fba3819c48f986ff9a3978e6183e&quot;,
-          &quot;e817b96334e34b039e4c43ef247dd971&quot;
+          &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+          &quot;1a729349142d487dba7b6c6dd18899a1&quot;,
+          &quot;657584c117f046e4be27315e2ddaff02&quot;
         ]
       }
     },
     {
-      &quot;_id&quot;: &quot;6af8de0e1874dbf754a5ca31&quot;,
-      &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+      &quot;_id&quot;: &quot;6af8e1685be913aa78ab2747&quot;,
+      &quot;run_id&quot;: &quot;r4904263866&quot;,
       &quot;kind&quot;: &quot;stop&quot;,
       &quot;principal&quot;: &quot;person:operator&quot;,
-      &quot;permission_id&quot;: &quot;7e75fba3819c48f986ff9a3978e6183e&quot;,
-      &quot;root_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
+      &quot;permission_id&quot;: &quot;1a729349142d487dba7b6c6dd18899a1&quot;,
+      &quot;root_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
       &quot;action_id&quot;: null,
       &quot;policy_version&quot;: 1,
       &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
       &quot;reason&quot;: &quot;ok&quot;,
       &quot;seq&quot;: 7,
-      &quot;at&quot;: &quot;2026-11-14T22:17:50.234000Z&quot;,
+      &quot;at&quot;: &quot;2026-11-14T22:32:08.328000Z&quot;,
       &quot;detail&quot;: {
-        &quot;receipt_id&quot;: &quot;fba7becb8d2441eaa33c12c3e735d662&quot;,
+        &quot;receipt_id&quot;: &quot;a806a29bed584b11950bc84227840725&quot;,
         &quot;revoked&quot;: [
-          &quot;7e75fba3819c48f986ff9a3978e6183e&quot;,
-          &quot;b8e9bce3ff6b439e92bf49039ca9eb08&quot;,
-          &quot;e817b96334e34b039e4c43ef247dd971&quot;
+          &quot;1a729349142d487dba7b6c6dd18899a1&quot;,
+          &quot;657584c117f046e4be27315e2ddaff02&quot;,
+          &quot;781832e6c9bc45a28d5d3fa58a7d0998&quot;
         ],
         &quot;covered&quot;: [
-          &quot;rbd2cf7c178-worker-1-0&quot;,
-          &quot;rbd2cf7c178-worker-2-0&quot;,
-          &quot;rbd2cf7c178-worker-1-1&quot;
+          &quot;r4904263866-worker-1-0&quot;,
+          &quot;r4904263866-worker-2-0&quot;,
+          &quot;r4904263866-worker-1-1&quot;
         ]
       }
     },
     {
-      &quot;_id&quot;: &quot;6af8de101874dbf754a5ca32&quot;,
-      &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+      &quot;_id&quot;: &quot;6af8e16b5be913aa78ab2748&quot;,
+      &quot;run_id&quot;: &quot;r4904263866&quot;,
       &quot;kind&quot;: &quot;deny&quot;,
       &quot;principal&quot;: &quot;sender&quot;,
-      &quot;permission_id&quot;: &quot;b8e9bce3ff6b439e92bf49039ca9eb08&quot;,
-      &quot;root_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-      &quot;action_id&quot;: &quot;rbd2cf7c178-worker-1-1&quot;,
+      &quot;permission_id&quot;: &quot;781832e6c9bc45a28d5d3fa58a7d0998&quot;,
+      &quot;root_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+      &quot;action_id&quot;: &quot;r4904263866-worker-1-1&quot;,
       &quot;policy_version&quot;: 1,
       &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
       &quot;reason&quot;: &quot;cancelled_by_stop&quot;,
       &quot;seq&quot;: 6,
-      &quot;at&quot;: &quot;2026-11-14T22:17:52.780000Z&quot;,
+      &quot;at&quot;: &quot;2026-11-14T22:32:10.970000Z&quot;,
       &quot;detail&quot;: {
         &quot;state&quot;: &quot;cancelled&quot;,
         &quot;revoked_by&quot;: &quot;person:operator&quot;,
-        &quot;revoked_at&quot;: &quot;2026-11-14T22:17:50.234000Z&quot;,
+        &quot;revoked_at&quot;: &quot;2026-11-14T22:32:08.328000Z&quot;,
         &quot;revoked_at_seq&quot;: 7
       }
     },
     {
-      &quot;_id&quot;: &quot;6af8de14512def36ffaf3b2b&quot;,
-      &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+      &quot;_id&quot;: &quot;6af8e16ed1877eac57c38ed6&quot;,
+      &quot;run_id&quot;: &quot;r4904263866&quot;,
       &quot;kind&quot;: &quot;deny&quot;,
       &quot;principal&quot;: &quot;agent:worker-2&quot;,
-      &quot;permission_id&quot;: &quot;e817b96334e34b039e4c43ef247dd971&quot;,
-      &quot;root_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-      &quot;action_id&quot;: &quot;rbd2cf7c178-worker-2-1&quot;,
+      &quot;permission_id&quot;: &quot;657584c117f046e4be27315e2ddaff02&quot;,
+      &quot;root_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+      &quot;action_id&quot;: &quot;r4904263866-worker-2-1&quot;,
       &quot;policy_version&quot;: 1,
       &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
       &quot;reason&quot;: &quot;revoked&quot;,
       &quot;seq&quot;: 8,
-      &quot;at&quot;: &quot;2026-11-14T22:17:56.345000Z&quot;,
+      &quot;at&quot;: &quot;2026-11-14T22:32:14.625000Z&quot;,
       &quot;detail&quot;: {
         &quot;tool&quot;: &quot;shift_traffic&quot;,
         &quot;target&quot;: &quot;router/region-b&quot;,
@@ -1289,34 +1221,34 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
           &quot;percent&quot;: 50
         },
         &quot;revoked_by&quot;: &quot;person:operator&quot;,
-        &quot;revoked_at&quot;: &quot;2026-11-14T22:17:50.234000Z&quot;,
+        &quot;revoked_at&quot;: &quot;2026-11-14T22:32:08.328000Z&quot;,
         &quot;revoked_at_seq&quot;: 7,
         &quot;chain&quot;: [
-          &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-          &quot;7e75fba3819c48f986ff9a3978e6183e&quot;,
-          &quot;e817b96334e34b039e4c43ef247dd971&quot;
+          &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+          &quot;1a729349142d487dba7b6c6dd18899a1&quot;,
+          &quot;657584c117f046e4be27315e2ddaff02&quot;
         ]
       }
     },
     {
-      &quot;_id&quot;: &quot;6af8de161874dbf754a5ca33&quot;,
-      &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+      &quot;_id&quot;: &quot;6af8e1705be913aa78ab2749&quot;,
+      &quot;run_id&quot;: &quot;r4904263866&quot;,
       &quot;kind&quot;: &quot;outcome&quot;,
       &quot;principal&quot;: &quot;agent:worker-2&quot;,
-      &quot;permission_id&quot;: &quot;e817b96334e34b039e4c43ef247dd971&quot;,
-      &quot;root_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-      &quot;action_id&quot;: &quot;rbd2cf7c178-worker-2-0&quot;,
+      &quot;permission_id&quot;: &quot;657584c117f046e4be27315e2ddaff02&quot;,
+      &quot;root_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+      &quot;action_id&quot;: &quot;r4904263866-worker-2-0&quot;,
       &quot;policy_version&quot;: 1,
       &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
       &quot;reason&quot;: &quot;ok&quot;,
       &quot;seq&quot;: 7,
-      &quot;at&quot;: &quot;2026-11-14T22:17:58.440000Z&quot;,
+      &quot;at&quot;: &quot;2026-11-14T22:32:16.644000Z&quot;,
       &quot;detail&quot;: {
         &quot;state&quot;: &quot;applied&quot;,
         &quot;evidence&quot;: {
-          &quot;action_id&quot;: &quot;rbd2cf7c178-worker-2-0&quot;,
+          &quot;action_id&quot;: &quot;r4904263866-worker-2-0&quot;,
           &quot;system&quot;: &quot;router&quot;,
-          &quot;at_epoch&quot;: 1794694668.6195369,
+          &quot;at_epoch&quot;: 1794695526.902803,
           &quot;applied&quot;: true,
           &quot;reason&quot;: &quot;ok&quot;,
           &quot;before&quot;: {
@@ -1332,20 +1264,20 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
       }
     },
     {
-      &quot;_id&quot;: &quot;6af8de191874dbf754a5ca35&quot;,
-      &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+      &quot;_id&quot;: &quot;6af8e1735be913aa78ab274b&quot;,
+      &quot;run_id&quot;: &quot;r4904263866&quot;,
       &quot;kind&quot;: &quot;undo&quot;,
       &quot;principal&quot;: &quot;person:operator&quot;,
-      &quot;permission_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-      &quot;root_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-      &quot;action_id&quot;: &quot;rbd2cf7c178-worker-2-0-undo&quot;,
+      &quot;permission_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+      &quot;root_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+      &quot;action_id&quot;: &quot;r4904263866-worker-2-0-undo&quot;,
       &quot;policy_version&quot;: 1,
       &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
       &quot;reason&quot;: &quot;ok&quot;,
       &quot;seq&quot;: 8,
-      &quot;at&quot;: &quot;2026-11-14T22:18:00.363000Z&quot;,
+      &quot;at&quot;: &quot;2026-11-14T22:32:18.488000Z&quot;,
       &quot;detail&quot;: {
-        &quot;reverses&quot;: &quot;rbd2cf7c178-worker-2-0&quot;,
+        &quot;reverses&quot;: &quot;r4904263866-worker-2-0&quot;,
         &quot;tool&quot;: &quot;shift_traffic&quot;,
         &quot;target&quot;: &quot;router/region-b&quot;,
         &quot;args&quot;: {
@@ -1354,18 +1286,18 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
       }
     },
     {
-      &quot;_id&quot;: &quot;6af8de191874dbf754a5ca34&quot;,
-      &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+      &quot;_id&quot;: &quot;6af8e1735be913aa78ab274a&quot;,
+      &quot;run_id&quot;: &quot;r4904263866&quot;,
       &quot;kind&quot;: &quot;allow&quot;,
       &quot;principal&quot;: &quot;person:operator&quot;,
-      &quot;permission_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-      &quot;root_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-      &quot;action_id&quot;: &quot;rbd2cf7c178-worker-2-0-undo&quot;,
+      &quot;permission_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+      &quot;root_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+      &quot;action_id&quot;: &quot;r4904263866-worker-2-0-undo&quot;,
       &quot;policy_version&quot;: 1,
       &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
       &quot;reason&quot;: &quot;ok&quot;,
       &quot;seq&quot;: 8,
-      &quot;at&quot;: &quot;2026-11-14T22:18:00.721000Z&quot;,
+      &quot;at&quot;: &quot;2026-11-14T22:32:18.833000Z&quot;,
       &quot;detail&quot;: {
         &quot;tool&quot;: &quot;shift_traffic&quot;,
         &quot;target&quot;: &quot;router/region-b&quot;,
@@ -1376,48 +1308,48 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
               &quot;region-a&quot;: 75,
               &quot;region-b&quot;: 25
             },
-            &quot;last_action_id&quot;: &quot;rbd2cf7c178-worker-2-0&quot;
+            &quot;last_action_id&quot;: &quot;r4904263866-worker-2-0&quot;
           }
         },
         &quot;chain&quot;: [
-          &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;
+          &quot;4edb59feb2de4837bd96354b356cabcc&quot;
         ]
       }
     },
     {
-      &quot;_id&quot;: &quot;6af8de191874dbf754a5ca36&quot;,
-      &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+      &quot;_id&quot;: &quot;6af8e1735be913aa78ab274c&quot;,
+      &quot;run_id&quot;: &quot;r4904263866&quot;,
       &quot;kind&quot;: &quot;claim&quot;,
       &quot;principal&quot;: &quot;sender&quot;,
-      &quot;permission_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-      &quot;root_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-      &quot;action_id&quot;: &quot;rbd2cf7c178-worker-2-0-undo&quot;,
+      &quot;permission_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+      &quot;root_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+      &quot;action_id&quot;: &quot;r4904263866-worker-2-0-undo&quot;,
       &quot;policy_version&quot;: 1,
       &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
       &quot;reason&quot;: &quot;ok&quot;,
       &quot;seq&quot;: 8,
-      &quot;at&quot;: &quot;2026-11-14T22:18:01.424000Z&quot;,
+      &quot;at&quot;: &quot;2026-11-14T22:32:19.531000Z&quot;,
       &quot;detail&quot;: {}
     },
     {
-      &quot;_id&quot;: &quot;6af8de1a1874dbf754a5ca37&quot;,
-      &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+      &quot;_id&quot;: &quot;6af8e1745be913aa78ab274d&quot;,
+      &quot;run_id&quot;: &quot;r4904263866&quot;,
       &quot;kind&quot;: &quot;outcome&quot;,
       &quot;principal&quot;: &quot;person:operator&quot;,
-      &quot;permission_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-      &quot;root_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-      &quot;action_id&quot;: &quot;rbd2cf7c178-worker-2-0-undo&quot;,
+      &quot;permission_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+      &quot;root_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+      &quot;action_id&quot;: &quot;r4904263866-worker-2-0-undo&quot;,
       &quot;policy_version&quot;: 1,
       &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
       &quot;reason&quot;: &quot;ok&quot;,
       &quot;seq&quot;: 8,
-      &quot;at&quot;: &quot;2026-11-14T22:18:02.217000Z&quot;,
+      &quot;at&quot;: &quot;2026-11-14T22:32:20.307000Z&quot;,
       &quot;detail&quot;: {
         &quot;state&quot;: &quot;applied&quot;,
         &quot;evidence&quot;: {
-          &quot;action_id&quot;: &quot;rbd2cf7c178-worker-2-0-undo&quot;,
+          &quot;action_id&quot;: &quot;r4904263866-worker-2-0-undo&quot;,
           &quot;system&quot;: &quot;router&quot;,
-          &quot;at_epoch&quot;: 1794694682.06564,
+          &quot;at_epoch&quot;: 1794695540.173027,
           &quot;applied&quot;: true,
           &quot;reason&quot;: &quot;ok&quot;,
           &quot;before&quot;: {
@@ -1433,20 +1365,20 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
       }
     },
     {
-      &quot;_id&quot;: &quot;6af8de1b1874dbf754a5ca38&quot;,
-      &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+      &quot;_id&quot;: &quot;6af8e1755be913aa78ab274e&quot;,
+      &quot;run_id&quot;: &quot;r4904263866&quot;,
       &quot;kind&quot;: &quot;deny&quot;,
       &quot;principal&quot;: &quot;person:operator&quot;,
-      &quot;permission_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-      &quot;root_id&quot;: &quot;72aa7d712e7547eba81ce7e12bb70b73&quot;,
-      &quot;action_id&quot;: &quot;rbd2cf7c178-worker-1-0-undo&quot;,
+      &quot;permission_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+      &quot;root_id&quot;: &quot;4edb59feb2de4837bd96354b356cabcc&quot;,
+      &quot;action_id&quot;: &quot;r4904263866-worker-1-0-undo&quot;,
       &quot;policy_version&quot;: 1,
       &quot;policy_hash&quot;: &quot;6985d7ecd8125945b0ccf5d69847f41fad6578cb7b1ea162d718d4beaeef0773&quot;,
       &quot;reason&quot;: &quot;no_undo&quot;,
       &quot;seq&quot;: null,
-      &quot;at&quot;: &quot;2026-11-14T22:18:02.820000Z&quot;,
+      &quot;at&quot;: &quot;2026-11-14T22:32:20.932000Z&quot;,
       &quot;detail&quot;: {
-        &quot;reverses&quot;: &quot;rbd2cf7c178-worker-1-0&quot;,
+        &quot;reverses&quot;: &quot;r4904263866-worker-1-0&quot;,
         &quot;tool&quot;: &quot;rollback&quot;,
         &quot;target&quot;: &quot;cluster/checkout-api&quot;,
         &quot;args&quot;: {
@@ -1457,13 +1389,13 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
   ],
   &quot;saved_work&quot;: [
     {
-      &quot;_id&quot;: &quot;rbd2cf7c178:agent:repair&quot;,
-      &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+      &quot;_id&quot;: &quot;r4904263866:agent:repair&quot;,
+      &quot;run_id&quot;: &quot;r4904263866&quot;,
       &quot;principal&quot;: &quot;agent:repair&quot;,
-      &quot;permission_id&quot;: &quot;7e75fba3819c48f986ff9a3978e6183e&quot;,
+      &quot;permission_id&quot;: &quot;1a729349142d487dba7b6c6dd18899a1&quot;,
       &quot;plan&quot;: [
         {
-          &quot;action_id&quot;: &quot;rbd2cf7c178-worker-1-0&quot;,
+          &quot;action_id&quot;: &quot;r4904263866-worker-1-0&quot;,
           &quot;tool&quot;: &quot;rollback&quot;,
           &quot;target&quot;: &quot;cluster/checkout-api&quot;,
           &quot;args&quot;: {
@@ -1471,13 +1403,13 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
           }
         },
         {
-          &quot;action_id&quot;: &quot;rbd2cf7c178-worker-1-1&quot;,
+          &quot;action_id&quot;: &quot;r4904263866-worker-1-1&quot;,
           &quot;tool&quot;: &quot;restart&quot;,
           &quot;target&quot;: &quot;cluster/checkout-worker&quot;,
           &quot;args&quot;: {}
         },
         {
-          &quot;action_id&quot;: &quot;rbd2cf7c178-worker-2-0&quot;,
+          &quot;action_id&quot;: &quot;r4904263866-worker-2-0&quot;,
           &quot;tool&quot;: &quot;shift_traffic&quot;,
           &quot;target&quot;: &quot;router/region-b&quot;,
           &quot;args&quot;: {
@@ -1485,7 +1417,7 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
           }
         },
         {
-          &quot;action_id&quot;: &quot;rbd2cf7c178-worker-2-1&quot;,
+          &quot;action_id&quot;: &quot;r4904263866-worker-2-1&quot;,
           &quot;tool&quot;: &quot;shift_traffic&quot;,
           &quot;target&quot;: &quot;router/region-b&quot;,
           &quot;args&quot;: {
@@ -1494,21 +1426,21 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
         }
       ],
       &quot;position&quot;: 4,
-      &quot;planner&quot;: &quot;scripted&quot;,
+      &quot;planner&quot;: &quot;saved&quot;,
       &quot;status&quot;: &quot;done&quot;,
       &quot;held_at&quot;: null,
       &quot;pid&quot;: null,
       &quot;note&quot;: &quot;Finished undo under Operator&#x27;s own permission. Marked actions that have no undo.&quot;,
-      &quot;updated_at&quot;: &quot;2026-11-14T22:18:03.210000Z&quot;
+      &quot;updated_at&quot;: &quot;2026-11-14T22:32:21.302000Z&quot;
     },
     {
-      &quot;_id&quot;: &quot;rbd2cf7c178:agent:worker-1&quot;,
-      &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+      &quot;_id&quot;: &quot;r4904263866:agent:worker-1&quot;,
+      &quot;run_id&quot;: &quot;r4904263866&quot;,
       &quot;principal&quot;: &quot;agent:worker-1&quot;,
-      &quot;permission_id&quot;: &quot;b8e9bce3ff6b439e92bf49039ca9eb08&quot;,
+      &quot;permission_id&quot;: &quot;781832e6c9bc45a28d5d3fa58a7d0998&quot;,
       &quot;plan&quot;: [
         {
-          &quot;action_id&quot;: &quot;rbd2cf7c178-worker-1-0&quot;,
+          &quot;action_id&quot;: &quot;r4904263866-worker-1-0&quot;,
           &quot;tool&quot;: &quot;rollback&quot;,
           &quot;target&quot;: &quot;cluster/checkout-api&quot;,
           &quot;args&quot;: {
@@ -1516,19 +1448,19 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
           }
         },
         {
-          &quot;action_id&quot;: &quot;rbd2cf7c178-worker-1-1&quot;,
+          &quot;action_id&quot;: &quot;r4904263866-worker-1-1&quot;,
           &quot;tool&quot;: &quot;restart&quot;,
           &quot;target&quot;: &quot;cluster/checkout-worker&quot;,
           &quot;args&quot;: {}
         }
       ],
       &quot;position&quot;: 1,
-      &quot;planner&quot;: &quot;scripted&quot;,
+      &quot;planner&quot;: &quot;saved&quot;,
       &quot;status&quot;: &quot;stopped&quot;,
       &quot;held_at&quot;: null,
-      &quot;pid&quot;: 48918,
-      &quot;note&quot;: &quot;Refused: Operator stopped the permission at 2026-11-14T22:17:50.234000+00:00.&quot;,
-      &quot;updated_at&quot;: &quot;2026-11-14T22:17:52.980000Z&quot;,
+      &quot;pid&quot;: 59576,
+      &quot;note&quot;: &quot;Refused: Operator stopped the permission at 2026-11-14T22:32:08.328000+00:00.&quot;,
+      &quot;updated_at&quot;: &quot;2026-11-14T22:32:11.175000Z&quot;,
       &quot;fixed_rules&quot;: {
         &quot;tools&quot;: [
           &quot;restart&quot;,
@@ -1545,13 +1477,13 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
       }
     },
     {
-      &quot;_id&quot;: &quot;rbd2cf7c178:agent:worker-2&quot;,
-      &quot;run_id&quot;: &quot;rbd2cf7c178&quot;,
+      &quot;_id&quot;: &quot;r4904263866:agent:worker-2&quot;,
+      &quot;run_id&quot;: &quot;r4904263866&quot;,
       &quot;principal&quot;: &quot;agent:worker-2&quot;,
-      &quot;permission_id&quot;: &quot;e817b96334e34b039e4c43ef247dd971&quot;,
+      &quot;permission_id&quot;: &quot;657584c117f046e4be27315e2ddaff02&quot;,
       &quot;plan&quot;: [
         {
-          &quot;action_id&quot;: &quot;rbd2cf7c178-worker-2-0&quot;,
+          &quot;action_id&quot;: &quot;r4904263866-worker-2-0&quot;,
           &quot;tool&quot;: &quot;shift_traffic&quot;,
           &quot;target&quot;: &quot;router/region-b&quot;,
           &quot;args&quot;: {
@@ -1559,7 +1491,7 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
           }
         },
         {
-          &quot;action_id&quot;: &quot;rbd2cf7c178-worker-2-1&quot;,
+          &quot;action_id&quot;: &quot;r4904263866-worker-2-1&quot;,
           &quot;tool&quot;: &quot;shift_traffic&quot;,
           &quot;target&quot;: &quot;router/region-b&quot;,
           &quot;args&quot;: {
@@ -1568,12 +1500,12 @@ th{position:static}th,td{padding:8px}thead{display:table-header-group}tr,.permis
         }
       ],
       &quot;position&quot;: 1,
-      &quot;planner&quot;: &quot;scripted&quot;,
+      &quot;planner&quot;: &quot;saved&quot;,
       &quot;status&quot;: &quot;stopped&quot;,
       &quot;held_at&quot;: null,
-      &quot;pid&quot;: 49054,
+      &quot;pid&quot;: 59801,
       &quot;note&quot;: &quot;Restored the router and checked the outstanding sends.&quot;,
-      &quot;updated_at&quot;: &quot;2026-11-14T22:17:59.014000Z&quot;,
+      &quot;updated_at&quot;: &quot;2026-11-14T22:32:17.190000Z&quot;,
       &quot;fixed_rules&quot;: {
         &quot;tools&quot;: [
           &quot;shift_traffic&quot;

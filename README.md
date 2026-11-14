@@ -4,6 +4,8 @@ StopLine stops a group of AI agents mid-run and accounts for every action they h
 
 Built in one day for the **Agents You Can Audit** statement at Agents in Context Toronto, a MongoDB hackathon, on 14 November 2026.
 
+**Live page: [aly700.github.io/stopline](https://aly700.github.io/stopline/)**. It is a recording: the real console replaying a run captured on the real cluster, because the live one needs Atlas, a Kubernetes cluster and local processes. Press the keys in order or use Autoplay. There is also a [one-minute video](https://www.youtube.com/watch?v=2440YfUVDkE).
+
 ![How StopLine is put together](docs/architecture.svg)
 
 ## What I found
@@ -84,6 +86,8 @@ The page says which key it is ready for. The usual order is `1 S`, then `2 K S W
 scripts/test-all.sh                                               # every test directory
 STOPLINE_E2E_CLUSTER=kind uv run pytest tests/e2e -o addopts=""   # both runs, end to end, on the real cluster
 uv run python -m stopline.proof --out results.json                # the 43 schedules
+uv run python scripts/record_pages.py --base http://127.0.0.1:8785 --out docs/recording.json   # re-record the live page
+uv run python scripts/build_pages.py
 ```
 
 Tests create their own databases and drop them. Two tests call a live language model and run only with `STOPLINE_LIVE=1`.
