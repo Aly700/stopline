@@ -49,7 +49,7 @@ export MONGODB_URI='mongodb+srv://...'      # or a line MONGODB_URI='...' in ~/.
 kind create cluster --name stopline
 demo-app/build.sh
 k8s/up.sh
-uv run python -m stopline                   # then open http://127.0.0.1:8765
+uv run python -m stopline                   # then open http://127.0.0.1:8785
 
 # or, with no cluster
 uv run python -m stopline --cluster mock

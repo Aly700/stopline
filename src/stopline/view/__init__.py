@@ -20,7 +20,7 @@ OPERATIONS = {'1': 'start_run', '2': 'start_run', 'S': 'press_stop', 'K': 'cut_a
 def create_app(db, stage, targets, numbers=None):
     """Create without opening any connection; streams belong to the app lifespan.
 
-    Serve with uvicorn on 127.0.0.1:8765. The view only reads records and target
+    Serve with uvicorn on 127.0.0.1:8785. The view only reads records and target
     state; key commands go through the supplied StageAPI.
     """
     feed = ChangeFeed(db)

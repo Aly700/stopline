@@ -5,7 +5,7 @@ import time
 
 import pytest
 
-from stopline.contract import DEMO_HOLDS, HoldPoint, Mode, OPERATOR, WORKER_ONE, WORKER_TWO, action_id_for
+from stopline.contract import PAGE_PORT, DEMO_HOLDS, HoldPoint, Mode, OPERATOR, WORKER_ONE, WORKER_TWO, action_id_for
 from .fakes import Database, Gate, Sender, Target
 
 
@@ -200,7 +200,7 @@ def test_production_launcher_passes_database_and_sender_url(rig, monkeypatch):
     argv, options = calls[0]
     assert argv[1:] == ["-m", "stopline.agents.worker", "--run", "r-test", "--principal", WORKER_ONE]
     assert options["env"]["STOPLINE_DATABASE"] == db.name
-    assert options["env"]["STOPLINE_SENDER_URL"] == "http://127.0.0.1:8765"
+    assert options["env"]["STOPLINE_SENDER_URL"] == f"http://127.0.0.1:{PAGE_PORT}"
 
 
 def test_overlapping_starts_reserve_one_run_before_scheduling_work(rig, monkeypatch):
