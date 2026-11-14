@@ -131,6 +131,15 @@ def build(cluster: str, port: int, voice: bool = False, model: bool = False) -> 
         report_routes = None
     if report_routes is not None:
         app.include_router(report_routes(database))
+
+        @app.middleware("http")
+        async def report_styles(request: Any, call_next: Any) -> Any:
+            # The report is one self-contained page with inline styles and no scripts.
+            response = await call_next(request)
+            if request.url.path.startswith("/report/"):
+                response.headers["Content-Security-Policy"] = (
+                    "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'")
+            return response
     if voice:
         from . import voice as spoken
 
