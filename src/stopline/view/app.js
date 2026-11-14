@@ -16,6 +16,8 @@ let targetLoading = false;
 let targetSignature = '';
 let operationLoading = false;
 let validationTimer;
+let searchRequest = null;
+let searchFocus = null;
 const targetValues = new Map();
 const targetHighlights = new Map();
 const names = {'person:operator': 'Operator', 'agent:repair': 'Repair agent', 'agent:worker-1': 'Worker one', 'agent:worker-2': 'Worker two'};
@@ -214,6 +216,7 @@ async function pollOperation() {
   finally { operationLoading = false; }
 }
 async function keypress(key) {
+  if (key === '/' || key === 'Q') { openAsk(); return; }
   if (busy) return;
   pending = null;
   if (key === 'P') {
@@ -260,10 +263,61 @@ async function showChain(actionId) {
     $('chain-content').replaceChildren(...nodes);
   } catch (_) { $('chain-content').replaceChildren(make('p', 'Evidence pending. Close and try again.', 'unknown')); }
 }
+function openAsk() {
+  if ($('chain-dialog').open) return;
+  if ($('numbers-dialog').open) $('numbers-dialog').close();
+  if ($('ask-panel').hidden) searchFocus = document.activeElement;
+  $('ask-panel').hidden = false;
+  $('ask-input').focus();
+}
+function closeAsk() {
+  searchRequest?.abort();
+  searchRequest = null;
+  $('ask-panel').hidden = true;
+  $('ask-results').hidden = true;
+  searchFocus?.focus();
+}
+async function askAudit(event) {
+  event.preventDefault();
+  const question = $('ask-input').value.trim();
+  if (!question) return;
+  searchRequest?.abort();
+  const request = new AbortController();
+  searchRequest = request;
+  $('ask-question').textContent = question;
+  $('ask-engine').textContent = '';
+  $('ask-rows').replaceChildren();
+  $('ask-message').textContent = 'searching';
+  $('ask-results').hidden = false;
+  try {
+    const response = await fetch('/api/ask?' + new URLSearchParams({q: question}), {signal: request.signal});
+    if (searchRequest !== request) return;
+    if (response.status === 404) { $('ask-message').textContent = 'Search is not enabled.'; return; }
+    if (!response.ok) throw new Error('search unavailable');
+    const result = await response.json();
+    if (searchRequest !== request) return;
+    $('ask-engine').textContent = result.engine ? `found with ${result.engine}` : '';
+    $('ask-message').textContent = result.ok ? (result.rows.length ? '' : result.message || 'No matching entries.') : result.message;
+    if (!result.ok) return;
+    $('ask-rows').replaceChildren(...result.rows.slice(0, 5).map(row => {
+      const node = make(row.action_id ? 'button' : 'div', null, 'ask-row');
+      node.append(make('time', clock(row.at), 'ask-time'), make('span', row.text, 'ask-text'), make('span', `score ${row.score}`, 'ask-score'));
+      if (row.action_id) node.addEventListener('click', () => showChain(row.action_id));
+      return node;
+    }));
+  } catch (error) {
+    if (searchRequest === request && error.name !== 'AbortError') $('ask-message').textContent = 'Search is unavailable. Try again.';
+  }
+}
+$('ask-form').addEventListener('submit', askAudit);
+$('ask-close').addEventListener('click', closeAsk);
 document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && !$('ask-panel').hidden && !$('chain-dialog').open && !$('numbers-dialog').open) {
+    event.preventDefault(); closeAsk(); return;
+  }
   if (event.repeat || event.ctrlKey || event.metaKey || event.altKey || /INPUT|TEXTAREA|SELECT/.test(event.target.tagName)) return;
   const key = event.key.toUpperCase();
-  if (!'12SKWRUVMP'.includes(key) || key.length !== 1 || $('chain-dialog').open) return;
+  if (!'12SKWRUVMP/Q'.includes(key) || key.length !== 1 || $('chain-dialog').open) return;
   if ($('numbers-dialog').open && key !== 'M') $('numbers-dialog').close();
   event.preventDefault(); keypress(key);
 });

@@ -43,6 +43,9 @@ def create_app(db, stage, targets, numbers=None):
         if request.method == 'POST' and origin and origin != str(request.base_url).rstrip('/'):
             return JSONResponse({'detail': 'Use the keys on this page.'}, status_code=403)
         response = await call_next(request)
+        # Search is optional. Keep an absent route from becoming a browser error.
+        if request.method == 'GET' and request.url.path == '/api/ask' and response.status_code == 404:
+            response = JSONResponse({'ok': False, 'rows': [], 'message': 'Search is not enabled.'})
         response.headers['Cache-Control'] = 'no-store'
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'"

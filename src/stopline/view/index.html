@@ -30,12 +30,25 @@
   <section id="receipt" class="receipt" aria-labelledby="receipt-title" hidden></section>
   <aside id="validation-panel" role="status" hidden><strong>Database response</strong><pre id="validation-text"></pre></aside>
   <footer>
+    <section id="ask-panel" aria-label="Ask the audit" hidden>
+      <div id="ask-results" hidden>
+        <h2 id="ask-question"></h2>
+        <p id="ask-engine" class="quiet"></p>
+        <p id="ask-message" role="status"></p>
+        <div id="ask-rows"></div>
+      </div>
+      <form id="ask-form">
+        <input id="ask-input" aria-label="Ask the audit" placeholder="Ask the audit: what did worker two do after the stop?" autocomplete="off">
+        <button type="button" id="ask-close">Close <kbd>Esc</kbd></button>
+      </form>
+    </section>
     <nav aria-label="Demo keys">
       <button data-key="1"><kbd>1</kbd> Stop flag</button><button data-key="2"><kbd>2</kbd> StopLine</button>
       <button data-key="S"><kbd>S</kbd> Stop</button><button data-key="K"><kbd>K</kbd> Cut + kill</button>
       <button data-key="W"><kbd>W</kbd> Resume</button><button data-key="R"><kbd>R</kbd> Restore</button>
       <button data-key="U"><kbd>U</kbd> Undo</button><button data-key="V"><kbd>V</kbd> Validation</button>
       <button data-key="M"><kbd>M</kbd> Numbers</button><button data-key="P"><kbd>P</kbd> Report</button>
+      <button data-key="/"><kbd>/</kbd> Ask</button>
     </nav>
     <div class="footnote"><span id="key-status" role="status">No key pressed.</span><span id="context">Timing controlled · router built for this test</span></div>
   </footer>
