@@ -156,7 +156,16 @@ def build(cluster: str, port: int, voice: bool = False, model: bool = False,
     if planner is not None:
         inner.planner = planner
     stage = ResettingStage(inner, targets, reset_all)
-    app = create_app(database, stage, targets, numbers=lambda: summary(database))
+    measured: list[str] = []
+
+    def numbers() -> list[str]:
+        # The measured results change only when the schedules are run again, so read them once.
+        if not measured:
+            measured.extend(summary(database))
+        return measured
+
+    threading.Thread(target=lambda: numbers(), daemon=True).start()
+    app = create_app(database, stage, targets, numbers=numbers)
     app.include_router(sender_routes(sender))
     if cluster == "mock":
         app.include_router(target_routes("cluster", targets["cluster"]))
