@@ -44,3 +44,23 @@ def test_summary_reads_latest_result_and_always_returns_three_lines(tmp_path):
     assert 'FAKE' in ' '.join(lines)
     assert 'in-flight' in ' '.join(lines)
     assert 'flag' in ' '.join(lines)
+
+
+def test_missing_required_schedule_is_incomplete(tmp_path):
+    from stopline.proof.runner import finalize
+    result = run_suite(work_dir=tmp_path)
+    result['rows'] = [r for r in result['rows'] if not (r['mode'] == 'stopline' and r['name'] == 'retry')]
+    assert not finalize(result)['complete']
+
+
+def test_skipped_required_schedule_does_not_count_as_passed_measurement(tmp_path):
+    from stopline.proof.runner import finalize
+    result = run_suite(work_dir=tmp_path)
+    row = next(r for r in result['rows'] if r['mode'] == 'stopline' and r['name'] == 'paused_send')
+    row.update(status='skipped', reason='fault hook unavailable')
+    finalize(result)
+    assert not result['complete']
+    assert result['totals']['stopline']['sent_before_stop_landed_after'] == 0
+    db = MemoryDatabase()
+    db['proof_results'].insert_one(result)
+    assert 'incomplete' in ' '.join(summary(db)).lower()

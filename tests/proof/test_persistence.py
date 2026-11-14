@@ -49,3 +49,30 @@ def test_cli_drops_scratch_even_when_output_write_fails(tmp_path, monkeypatch, c
     assert main(['--out', str(tmp_path)]) == 2
     assert dropped == [scratch]
     assert 'IsADirectoryError' in capsys.readouterr().err
+
+
+def test_cli_cleanup_failure_is_a_failure(tmp_path, monkeypatch, capsys):
+    from stopline import db as connection
+    monkeypatch.setattr(connection, 'test_database', lambda lane: MemoryDatabase())
+    monkeypatch.setattr(connection, 'database', lambda name: MemoryDatabase())
+
+    def cannot_drop(db):
+        raise RuntimeError('sensitive connection details')
+
+    monkeypatch.setattr(connection, 'drop_test_database', cannot_drop)
+    assert main(['--out', str(tmp_path / 'out.json')]) == 2
+    assert 'sensitive connection details' not in capsys.readouterr().err
+
+
+def test_json_replay_recomputes_counts_instead_of_trusting_old_totals(tmp_path):
+    result = run_suite(work_dir=tmp_path)
+    original = [r.get('counts') for r in result['rows']]
+    write_json(tmp_path / 'results.json', result)
+    loaded = json.loads((tmp_path / 'results.json').read_text())
+    loaded['totals'] = {'invented': 999}
+    for row in loaded['rows']:
+        if 'counts' in row:
+            row['counts'] = {'invented': 999}
+    finalize(loaded)
+    assert [r.get('counts') for r in loaded['rows']] == original
+    assert loaded['complete']

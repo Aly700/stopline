@@ -279,6 +279,7 @@ class FakeTarget:
 
     def restore(self):
         self.reachable = True
+        self.lose_next = False
 
     def restart(self):
         self.connection.close()

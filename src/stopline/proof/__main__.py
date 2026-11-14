@@ -8,7 +8,7 @@ from pathlib import Path
 from stopline import db as connection
 from stopline.proof import summary
 from stopline.proof.metrics import COUNT_KEYS
-from stopline.proof.persistence import persist_and_reload, reload_evidence, write_json
+from stopline.proof.persistence import persist_and_reload, write_json
 from stopline.proof.runner import finalize, run_suite
 from stopline.proof.store import MemoryDatabase
 
@@ -53,6 +53,7 @@ def main(argv=None):
     if args.offline and args.backend != 'fake':
         parser.error('--offline requires --backend fake')
     scratch = None
+    exit_code = 2
     started = time.monotonic()
     try:
         if not args.offline:
@@ -66,22 +67,29 @@ def main(argv=None):
                 # collected by an integrated target logger before this mode is complete.
                 result['sources']['record_storage'] = 'real scratch database; target snapshots captured locally'
             finalize(result)
+            connection.drop_test_database(scratch)
+            scratch = None
         result['elapsed_seconds'] = round(time.monotonic() - started, 3)
+        result['duration_scope'] = 'execution, evidence write/read and scratch cleanup; excludes final JSON/result publication'
         result['under_six_minutes'] = result['elapsed_seconds'] < 360
         write_json(args.out, result)
-        if scratch is not None:
+        if not args.offline:
             connection.database(args.database)['proof_results'].insert_one(result)
         print_result(result)
-        return 0 if result['complete'] and result['under_six_minutes'] else 1
+        whole_seconds = time.monotonic() - started
+        print(f'Total command wall time including publication: {whole_seconds:.3f}s')
+        exit_code = 0 if result['complete'] and whole_seconds < 360 else 1
     except Exception as error:
         print(f'proof could not complete ({type(error).__name__}); no connection details logged', file=sys.stderr)
-        return 2
+        exit_code = 2
     finally:
         if scratch is not None:
             try:
                 connection.drop_test_database(scratch)
             except Exception as error:
                 print(f'scratch cleanup failed ({type(error).__name__})', file=sys.stderr)
+                exit_code = 2
+    return exit_code
 
 
 if __name__ == '__main__':

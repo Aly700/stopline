@@ -38,13 +38,24 @@ Target application is the execution-start boundary in this instant-apply model;
 requests that are deduplicated or fenced do not start another effect.
 
 Receipt closure requires terminal effects with matching independent target
-evidence, or a cancelled effect that was never dispatched or applied. Baselines
+evidence, or a cancelled effect that was never claimed, dispatched or applied.
+Checks inspect intermediate stored snapshots as well as the final state, so a
+premature closure cannot disappear after reconciliation. Failed connections are
+not evidence of dispatch. Missing evidence, missing required schedules, and
+unexercised holds/faults cannot produce a passing report. Baselines
 have no admissions or receipts, so those fields are `null`, not zero. Added delay
 is paired check-plus-claim wall time above the fixed-mode check for the same
 schedule and worker step, clamped at zero. Median and worst pool matched samples;
 setup, holds, target I/O, stops, and result persistence are excluded. Fake timings
 are measured, but do not predict Atlas gate latency. Timing samples vary between
 runs; safety counts are the repeatability assertion.
+
+Run `uv run pytest tests/proof -o addopts=""` for the local checks. Set
+`STOPLINE_PROOF_ATLAS=1` on that command to include the bounded scratch-storage
+round trip and verify that the scratch database has no collections after drop.
+The reported elapsed field includes scratch cleanup and excludes final JSON
+and publication; the CLI also prints total command wall time including those
+operations and uses that total for its six-minute exit-status check.
 
 The JSON includes every source snapshot, counter definition, named schedule,
 status, skip reason, and backend provenance. Recompute with
@@ -59,3 +70,6 @@ The real path still needs expiry/retry hooks, a router process restart controlle
 and complete target-owned journals with `event`, `action_id`, `system`, and
 `at_epoch`; unsupported schedules are explicitly skipped. The current branch
 has no gate or targets packages, so integrated numbers are not yet available.
+The real factory rejects a non-proof scratch database or a non-loopback router.
+It restores injected faults on exceptional exits. Unsupported required schedules
+make the result incomplete even when every measured counter happens to be zero.

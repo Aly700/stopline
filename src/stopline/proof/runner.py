@@ -13,7 +13,7 @@ from stopline.contract import (
 )
 from stopline.proof.backend import SOURCES, UnsupportedSchedule, build_runtime
 from stopline.proof.fakes import effect_for
-from stopline.proof.metrics import DEFINITIONS, INVARIANTS, aggregate, measure
+from stopline.proof.metrics import DEFINITIONS, INVARIANTS, aggregate, evidence_checks, measure
 from stopline.proof.schedules import BOUNDS, schedules
 
 
@@ -90,12 +90,17 @@ class Driver:
         data['target_logs'] = logs
         return data
 
-    def observe(self, event):
+    def observe(self, event, **detail):
         data = self.capture()
         self.db['proof_observations'].insert_one(dict(
             run_id=self.run_id, event=event, receipts=data['receipts'], effects=data['effects'],
             target_logs=data['target_logs'], sends=data['sends'], at_epoch=time.time(),
+            **detail,
         ))
+
+    def reach_hold(self, worker, step, point):
+        self.observe('hold_reached', hold=dict(principal=worker, step=step, point=str(point)))
+        self.stop()
 
     def _timing(self, worker, step, duration_ms):
         key = f'{worker}:{step}'
@@ -110,7 +115,7 @@ class Driver:
     def step(self, worker, step, *, hold=None, dispatch=None, returned=None, claim_only=False):
         action = self.action(worker, step)
         if hold == HoldPoint.BEFORE_CHECK:
-            self.stop()
+            self.reach_hold(worker, step, hold)
         started = time.perf_counter_ns()
         if self.mode == 'stopline':
             allowed = self.gate.admit(action).allowed
@@ -124,7 +129,7 @@ class Driver:
         if self.mode != 'stopline':
             self.db['effects'].insert_one(effect_for(action, self.mode))
         if hold == HoldPoint.AFTER_CHECK:
-            self.stop()
+            self.reach_hold(worker, step, hold)
         if self.mode == 'stopline':
             started = time.perf_counter_ns()
             claimed = self.sender.claim(action.action_id).claimed
@@ -132,14 +137,14 @@ class Driver:
             if not claimed:
                 return
         if hold == HoldPoint.AFTER_CLAIM:
-            self.stop()
+            self.reach_hold(worker, step, hold)
         if claim_only:
             return
         target = self.targets[system_of(action.target)]
         if dispatch:
             target.on_dispatch[action.action_id] = dispatch
         if hold == HoldPoint.AFTER_SEND or returned:
-            target.on_return[action.action_id] = returned or self.stop
+            target.on_return[action.action_id] = returned or (lambda: self.reach_hold(worker, step, hold))
         if self.mode == 'stopline':
             self.sender.send(action.action_id)
         else:
@@ -228,8 +233,17 @@ class Driver:
 
 
 def checks_for(case, mode, data):
-    checks = {'stop_recorded': data['run']['stop_at_local'] is not None}
+    checks = {'stop_recorded': data['run']['stop_at_local'] is not None, **evidence_checks(data)}
     effects = data['effects']
+    if case.kind == 'hold':
+        expected = dict(principal=case.worker, step=case.step, point=str(case.point))
+        checks['designated_hold_reached'] = any(
+            o['event'] == 'hold_reached' and o.get('hold') == expected for o in data['observations'])
+    if case.kind == 'paused_send':
+        checks['dispatch_crossed_stop'] = measure(data)['sent_before_stop_landed_after'] == 1
+    if case.kind == 'late_duplicate':
+        checks['duplicate_request_delivered'] = len(data['sends']) == 2
+        checks['one_target_application'] = sum(row['event'] == 'applied' for row in data['target_logs']) == 1
     if mode == 'stopline':
         checks['receipt_exists'] = len(data['receipts']) == 1
         checks['receipt_closed'] = all(r['status'] == 'closed' for r in data['receipts'])
@@ -242,6 +256,13 @@ def checks_for(case, mode, data):
             checks['earlier_action_applied'] = any(e['state'] == 'applied' for e in effects)
         if case.kind == 'hand_down':
             checks['no_active_descendant_after_stop'] = all(m['status'] == 'revoked' for m in data['mandates'] if m['depth'] > 0)
+            child_exists = any(m['holder'] == WORKER_TWO for m in data['mandates'])
+            checks['hand_down_order_exercised'] = child_exists if case.first == 'grant' else (
+                not child_exists and any(a['kind'] == 'deny' and a['reason'] == 'revoked' for a in data['audit']))
+        if case.kind == 'parent_stop':
+            checks['admission_order_exercised'] = (
+                len(effects) == 1 and effects[0]['state'] == 'cancelled' if case.first == 'admit'
+                else not effects and any(a['kind'] == 'deny' and a['reason'] == 'revoked' for a in data['audit']))
         if case.kind in ('lost_reply', 'router_restart', 'receipt_closure'):
             snapshots = [o for o in data['observations'] if o['event'] in ('while_unreachable', 'before_reconcile')]
             checks['open_while_unknown'] = bool(snapshots) and all(
@@ -251,7 +272,8 @@ def checks_for(case, mode, data):
             checks['fenced_late_arrival'] = any(row['event'] == 'fenced' for row in data['target_logs']) and not any(
                 row['event'] == 'applied' for row in data['target_logs'])
     if case.kind == 'router_restart':
-        checks['durable_after_restart'] = bool(effects) and all(e['state'] == 'applied' and e['evidence'] for e in effects)
+        checks['durable_after_restart'] = bool(effects) and all(e['state'] == 'applied' and e['evidence'] for e in effects) and any(
+            o['event'] == 'after_restart' for o in data['observations'])
     return checks
 
 
@@ -268,6 +290,10 @@ def skip_reason(case, mode, backend):
 def finalize(result):
     for row in result['rows']:
         if row['status'] == 'skipped' or 'evidence' not in row:
+            row.pop('counts', None)
+            row.pop('checks', None)
+            if row['status'] != 'skipped':
+                row.update(status='failed', error=row.get('error') or 'MissingEvidence')
             continue
         row['counts'] = measure(row['evidence'])
         row['checks'] = checks_for(next(s for s in schedules() if s.name == row['name']), row['mode'], row['evidence'])
@@ -279,7 +305,15 @@ def finalize(result):
     result['run'] = [f"{r['mode']}:{r['name']}" for r in result['rows'] if r['status'] != 'skipped']
     result['flag_counterexamples'] = [r['name'] for r in result['rows'] if r['mode'] == 'flag'
                                       and r.get('counts', {}).get('started_after_stop_unsent', 0) > 0]
-    result['complete'] = not result['failed'] and bool(result['flag_counterexamples'])
+    expected = {(mode, case.name) for mode in ('stopline', 'flag', 'fixed') for case in schedules()}
+    actual = [(r['mode'], r['name']) for r in result['rows']]
+    result['catalogue_complete'] = set(actual) == expected and len(actual) == len(expected)
+    required_passed = all(
+        r['status'] == 'passed' for r in result['rows']
+        if skip_reason(next(s for s in schedules() if s.name == r['name']), r['mode'], 'fake') is None
+    )
+    result['complete'] = (result['catalogue_complete'] and required_passed
+                          and not result['failed'] and bool(result['flag_counterexamples']))
     return result
 
 
@@ -318,7 +352,10 @@ def run_suite(*, work_dir=None, backend='fake', scratch_db=None, router_url='htt
                 row.update(status='failed', error=type(error).__name__)
             finally:
                 if runtime:
-                    runtime.close()
+                    try:
+                        runtime.close()
+                    except Exception as error:
+                        row.update(status='failed', error=f'cleanup/{type(error).__name__}')
             result['rows'].append(row)
     result['elapsed_seconds'] = round(time.monotonic() - started, 3)
     result['under_six_minutes'] = result['elapsed_seconds'] < 360

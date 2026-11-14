@@ -64,6 +64,7 @@ def test_cancelled_effect_must_never_have_been_sent_or_applied():
     assert measure(data)['closed_without_evidence'] == 1
     data['sends'] = []
     data['target_logs'] = []
+    data['effects'][0]['sent_at'] = None
     assert measure(data)['closed_without_evidence'] == 0
 
 
@@ -74,3 +75,37 @@ def test_baselines_do_not_claim_admissions_or_receipts():
     counts = measure(data)
     for key in ('admitted_after_stop', 'missing_from_receipt', 'closed_without_evidence'):
         assert counts[key] is None
+
+
+def test_premature_closure_is_not_hidden_by_later_reconciliation():
+    data = snapshot()
+    early = deepcopy(data)
+    early['effects'][0].update(state='sent', evidence=None)
+    early['target_logs'] = []
+    data['observations'] = [dict(early, event='after_stop')]
+    assert measure(data)['closed_without_evidence'] == 1
+
+
+def test_receipt_omission_cannot_be_healed_by_editing_covered_later():
+    data = snapshot()
+    early = deepcopy(data)
+    early['receipts'][0]['covered'] = []
+    data['observations'] = [dict(early, event='after_stop')]
+    assert measure(data)['missing_from_receipt'] == 1
+    assert measure(data)['closed_without_evidence'] == 1
+
+
+def test_missing_target_timestamp_is_not_evidence():
+    data = snapshot()
+    del data['effects'][0]['evidence']['at_epoch']
+    del data['target_logs'][0]['at_epoch']
+    # Invalid source data must be visible, not accepted as matching None values.
+    assert measure(data)['closed_without_evidence'] == 1
+
+
+def test_failed_connection_does_not_prove_a_pre_stop_send():
+    data = snapshot()
+    data['sends'][0]['dispatched'] = False
+    data['sends'].append({'action_id': 'a', 'at_epoch': 10.5, 'dispatched': True})
+    assert measure(data)['started_after_stop_unsent'] == 1
+    assert measure(data)['sent_before_stop_landed_after'] == 0

@@ -3,8 +3,10 @@
 import time
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlparse
+from uuid import uuid4
 
-from stopline.contract import Action, GateAPI, Sender, TargetAdapter
+from stopline.contract import Action, GateAPI, Sender, TargetAdapter, TargetUnreachable
 from stopline.proof.fakes import FakeGate, FakeSender, FakeTarget
 from stopline.proof.store import MemoryDatabase
 
@@ -26,10 +28,13 @@ class ObservedTarget:
         self.on_dispatch = {}
         self.on_return = {}
         self.requests = {}
+        self.fault_active = False
 
     def send(self, action: Action):
         self.requests[action.action_id] = action
+        dispatch_id = uuid4().hex
         self.db['proof_sends'].insert_one({
+            '_id': dispatch_id, 'dispatched': True,
             'run_id': action.run_id, 'action_id': action.action_id,
             'system': self.name, 'at_epoch': time.time(),
         })
@@ -38,6 +43,10 @@ class ObservedTarget:
             hook()
         try:
             return self.target.send(action)
+        except TargetUnreachable:
+            # The protocol guarantees this call did not accept the connection.
+            self.db['proof_sends'].update_one({'_id': dispatch_id}, {'$set': {'dispatched': False}})
+            raise
         finally:
             hook = self.on_return.pop(action.action_id, None)
             if hook:
@@ -59,10 +68,13 @@ class ObservedTarget:
         return self.target.inverse_of(action)
 
     def cut(self):
+        self.fault_active = True
         return self.target.cut()
 
     def restore(self):
-        return self.target.restore()
+        result = self.target.restore()
+        self.fault_active = False
+        return result
 
 
 @dataclass
@@ -89,9 +101,13 @@ class Runtime:
         self.targets['router'].target.restart()
 
     def close(self):
-        if self.backend == 'fake':
-            for target in self.targets.values():
-                target.target.close()
+        for target in self.targets.values():
+            try:
+                if target.fault_active:
+                    target.restore()
+            finally:
+                if self.backend == 'fake':
+                    target.target.close()
 
 
 SOURCES = {
@@ -122,11 +138,15 @@ def build_runtime(*, backend='fake', work_dir: Path, db=None, router_url='http:/
         targets = {key: ObservedTarget(target, db) for key, target in raw_targets.items()}
         sender = FakeSender(gate, targets)
     elif backend == 'real':
+        if db is None or not db.name.startswith('stopline_test_proof_'):
+            raise ValueError('real backend requires a proof scratch database')
+        router = urlparse(router_url)
+        if (router.scheme != 'http' or router.hostname not in ('127.0.0.1', 'localhost', '::1')
+                or router.port != 8766 or router.username or router.password):
+            raise ValueError('real target timestamps require a loopback router on port 8766')
         from stopline.gate import build_gate
         from stopline.targets import build_sender, build_targets
 
-        if db is None:
-            raise ValueError('real backend requires an isolated scratch database')
         gate = build_gate(db)
         raw_targets = build_targets(cluster='mock', router_url=router_url)
         targets = {key: ObservedTarget(target, db) for key, target in raw_targets.items()}
