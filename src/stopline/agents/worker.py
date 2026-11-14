@@ -31,8 +31,8 @@ def refusal_note(result):
     """Keep the gate's stop identity and time visible on the saved task."""
     who = result.detail.get("revoked_by")
     when = result.detail.get("revoked_at")
-    if hasattr(when, "isoformat"):
-        when = when.isoformat()
+    if hasattr(when, "astimezone"):
+        when = when.astimezone().strftime("%H:%M:%S")   # the page's clock
     if who is not None and when is not None:
         name = DISPLAY_NAMES.get(who, "Permission holder")
         return f"Refused: {name} stopped the permission at {when}."

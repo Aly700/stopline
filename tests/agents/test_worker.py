@@ -87,7 +87,7 @@ def test_claim_connection_failure_keeps_the_unsent_step_saved(rig, monkeypatch):
 def test_refusals_use_display_names_and_permission(principal, name):
     at = utcnow()
     admission = Admission(False, "action", Reason.REVOKED, detail={"revoked_by": principal, "revoked_at": at})
-    assert refusal_note(admission) == f"Refused: {name} stopped the permission at {at.isoformat()}."
+    assert refusal_note(admission) == f"Refused: {name} stopped the permission at {at.astimezone().strftime("%H:%M:%S")}."
 
 
 def test_refusal_reason_does_not_expose_the_internal_permission_name():

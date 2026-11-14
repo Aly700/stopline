@@ -12,6 +12,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from stopline.contract import AuditKind, Reason
+from stopline.search.sentences import clock
 from stopline.search import AuditSearch, search_routes, sentence_for
 from stopline.search.voyage import DIMENSIONS, MODEL, VoyageClient
 
@@ -127,7 +128,7 @@ def voyage_server(monkeypatch):
 @pytest.mark.parametrize('kind,detail,phrase', [
     ('allow', {'chain': [{'holder': 'person:operator'}, {'holder': 'agent:repair'},
                          {'holder': 'agent:worker-2'}]}, 'was allowed to shift 50% to region B under Operator → Repair agent → Worker two'),
-    ('deny', {}, 'Refused: stopped by Operator at 14:28:26'),
+    ('deny', {}, 'Refused: stopped by Operator at '),
     ('hand_down', {'holder': 'agent:worker-1'}, 'handed permission to Worker one'),
     ('stop', {'holder': 'agent:repair', 'covered': ['a', 'b', 'c']}, "stopped the Repair agent's permission; 3 actions on the receipt"),
     ('claim', {}, 'claimed'),
@@ -138,7 +139,7 @@ def test_sentences_cover_each_kind(kind, detail, phrase):
     row = entry(kind)
     row['detail'].update(detail)
     assert phrase in sentence_for(row)
-    assert sentence_for(row).startswith('14:28:26 ')
+    assert sentence_for(row).startswith(clock(row['at']) + ' ')
 
 
 def test_refusal_uses_attempted_arguments_over_effect():

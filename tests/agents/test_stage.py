@@ -122,7 +122,7 @@ def test_stopline_restart_refusal_names_stopper_and_time(rig):
     run = db.runs.find_one({"_id": run_id})
     receipt = db.receipts.find_one({"_id": run["receipt_id"]})
     assert "Operator stopped the permission" in first["note"]
-    assert receipt["stopped_at"].isoformat() in first["note"]
+    assert receipt["stopped_at"].astimezone().strftime("%H:%M:%S") in first["note"]
     assert not db.target_log.find_one({"_id": action_id_for(run_id, WORKER_ONE, 1)})
     assert db.mandates.find_one({"_id": run["root_mandate_id"]})["status"] == "active"
     assert db.mandates.find_one({"_id": run["agent_mandate_id"]})["status"] == "revoked"

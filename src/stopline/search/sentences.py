@@ -26,7 +26,10 @@ def clock(value):
             value = datetime.fromisoformat(value.replace('Z', '+00:00'))
         except ValueError:
             return 'Unknown time'
-    return value.strftime('%H:%M:%S') if isinstance(value, datetime) else 'Unknown time'
+    if not isinstance(value, datetime):
+        return 'Unknown time'
+    # The page shows local clock times, so a reviewer's search results use the same clock.
+    return (value.astimezone() if value.tzinfo else value).strftime('%H:%M:%S')
 
 
 def action_words(record):
@@ -52,6 +55,8 @@ def sentence_for(entry, effect=None):
     effect = effect or {}
     action = action_words({**effect, **detail})
     who = person(entry.get('principal'))
+    if not str(entry.get('principal', '')).startswith(('agent:', 'person:')) and effect.get('principal'):
+        who = person(effect['principal'])   # a refused claim is recorded by the sender; name whose action it was
     prefix = f"{clock(entry.get('at'))} {who}"
     kind = entry['kind']
     if kind == 'allow':

@@ -39,7 +39,7 @@ def test_overreach_after_stop_reports_the_gates_stopper_and_time(rig, monkeypatc
     assert result.ok and result.detail["reason"] == Reason.REVOKED
     permission = db.mandates.find_one({"_id": task(db, run_id, WORKER_TWO)["mandate_id"]})
     assert "Worker two asked to shift 90%. Refused:" in result.message
-    assert "Operator" in result.message and permission["revoked_at"].isoformat() in result.message
+    assert "Operator" in result.message and permission["revoked_at"].astimezone().strftime("%H:%M:%S") in result.message
     assert "person:" not in result.message and "mandate" not in result.message
     assert db.audit.find_one({"action_id": result.detail["action_id"], "kind": "deny"})
     assert db.effects.find() == [] and db.send_calls.find() == []
