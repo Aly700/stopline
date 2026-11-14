@@ -130,7 +130,7 @@ class Worker:
             "state": EffectState.APPLIED if result.applied else EffectState.REJECTED,
             "evidence": result.evidence, "finished_at": utcnow(),
         }})
-        return True
+        return EffectState.APPLIED if result.applied else EffectState.REJECTED
 
     def _gated(self, action, position):
         admitted = self.gate.admit(action)
@@ -138,16 +138,22 @@ class Worker:
             self._stop(refusal_note(admitted))
             return False
         self._hold(HoldPoint.AFTER_CHECK, position)
-        claimed = self.sender.claim(action.action_id)
+        try:
+            claimed = self.sender.claim(action.action_id)
+        except httpx.RequestError:
+            # A lost claim response does not establish that a send happened.
+            # Resume will inspect the persisted effect before retrying this step.
+            self._stop("Could not confirm the claim; kept this step saved for resume.")
+            return False
         if not claimed.claimed:
             self._stop(refusal_note(claimed))
             return False
         self._hold(HoldPoint.AFTER_CLAIM, position)
         self._save(f"Sending {action.tool} to {action.target}.")
-        self.sender.send(action.action_id)
+        result = self.sender.send(action.action_id)
         # Sender.send owns outcome recording in the final shared interface.
         self._hold(HoldPoint.AFTER_SEND, position)
-        return True
+        return result["state"]
 
     def run_saved(self):
         self.task = self.db.tasks.find_one({"_id": self.task_id})
@@ -157,6 +163,7 @@ class Worker:
         self.listener.start()
         try:
             plan = self.task["plan"]
+            unsettled = False
             for position in range(self.task["position"], len(plan)):
                 step = plan[position]
                 # Save both plan and position before doing anything for this step.
@@ -165,6 +172,7 @@ class Worker:
                            status=TaskStatus.RUNNING, held_at=None)
                 existing = self.db.effects.find_one({"_id": step["action_id"]})
                 if existing and existing["state"] in {EffectState.SENT, *TERMINAL_STATES}:
+                    unsettled |= existing["state"] == EffectState.SENT
                     self._save("This step was already sent or settled; reconciliation owns its outcome.",
                                position=position + 1)
                     continue
@@ -172,22 +180,25 @@ class Worker:
                 action = Action(run_id=self.run_id, principal=self.principal,
                                 mandate_id=self.task["mandate_id"] or "", **step)
                 try:
-                    proceed = (self._gated(action, position) if self.run["mode"] == Mode.STOPLINE
+                    outcome = (self._gated(action, position) if self.run["mode"] == Mode.STOPLINE
                                else self._baseline(action, position))
                 except (TargetTimeout, TargetUnreachable, httpx.RequestError):
-                    self._save("The send has no confirmed outcome; reconciliation will check it.",
-                               position=position + 1)
-                    proceed = True
-                if not proceed:
+                    outcome = EffectState.SENT
+                if not outcome:
                     return
-                self._save(f"Finished step {position + 1}.", position=position + 1)
+                unsettled |= outcome == EffectState.SENT
+                note = (f"Sent step {position + 1}; its outcome is pending reconciliation."
+                        if outcome == EffectState.SENT else f"Finished step {position + 1}: {outcome}.")
+                self._save(note, position=position + 1)
                 # Never interrupt an already checked step: the demo deliberately
                 # pauses that race. A resumed worker must reach its next gate check.
                 if (position + 1 < len(plan) and self.run["mode"] != Mode.FIXED
                         and self.listener.stopped.is_set()):
                     self._stop("Heard the stop; halted before starting another step.")
                     return
-            self._save("All saved steps have been handled.", status=TaskStatus.DONE, held_at=None)
+            note = ("All saved steps have been handled; some outcomes are pending reconciliation."
+                    if unsettled else "All saved steps have been handled.")
+            self._save(note, status=TaskStatus.DONE, held_at=None)
         finally:
             self.listener.close()
 

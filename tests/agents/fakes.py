@@ -46,7 +46,7 @@ class Collection:
     def find_one(self, query=None, *args, **kwargs):
         return next(iter(self.find(query)), None)
 
-    def insert_one(self, doc):
+    def insert_one(self, doc, **kwargs):
         with self.db.lock:
             if self.name == "audit" and not all(k in doc for k in ("kind", "principal", "at")):
                 raise WriteError("Document failed validation", 121)
@@ -254,6 +254,7 @@ class Sender:
 
     def send(self, action_id):
         from stopline.contract import Action
+        self.db.send_calls.insert_one({"action_id": action_id})
         effect = self.db.effects.find_one({"_id": action_id})
         assert effect["state"] == "sent"
         action = Action(action_id, effect["run_id"], effect["mandate_id"],

@@ -12,21 +12,34 @@ import sys
 import threading
 import time
 
+import httpx
+from pymongo.errors import OperationFailure
+
 from stopline.contract import (
     DEMO_HOLDS, DEMO_PLAN, EffectState, Mode, OPERATOR, PAGE_PORT, REPAIR_AGENT,
-    ROUTER, StageResult, TaskStatus, WORKER_ONE, WORKER_TWO, action_id_for,
+    ROUTER, Reason, StageResult, TaskStatus, TargetTimeout, TargetUnreachable,
+    UndoMark, WORKER_ONE, WORKER_TWO, action_id_for, system_of,
 )
+from stopline.db import run_transaction
+from .planner import ScriptedPlanner
+from .repair import RepairAgent
 from .worker import utcnow
 
 
 WORKERS = (WORKER_ONE, WORKER_TWO)
 
 
+class MissingValidator(Exception):
+    pass
+
+
 class Stage:
     def __init__(self, db, gate, targets, sender, cluster="kind"):
         self.db, self.gate, self.targets, self.sender = db, gate, targets, sender
         self.cluster = cluster
+        self.planner = ScriptedPlanner()
         self.run_id = None
+        self._starting = False
         self._processes = {}
         self._jobs = {}
         self._job_lock = threading.Lock()
@@ -97,15 +110,24 @@ class Stage:
             return StageResult(False, "Choose stopline, flag or fixed mode.")
         with self._job_lock:
             previous = self._jobs.get((self.run_id, "start_run"))
-            if previous is not None and not previous.done():
+            if self._starting or (previous is not None and not previous.done()):
                 return StageResult(True, "Start run is pending.", pending=True, run_id=self.run_id)
             if any(handle.poll() is None for handle in self._processes.values()):
                 return StageResult(False, "Wait for the previous workers to finish before starting a run.",
                                    run_id=self.run_id)
             run_id = "r" + secrets.token_hex(5)
             self.run_id = run_id
+            self._starting = True
         saved_holds = deepcopy(DEMO_HOLDS[mode] if holds is None else holds)
-        return self._command("start_run", lambda: self._start(run_id, mode, saved_holds), run_id)
+
+        def start():
+            try:
+                return self._start(run_id, mode, saved_holds)
+            finally:
+                with self._job_lock:
+                    self._starting = False
+
+        return self._command("start_run", start, run_id)
 
     def _start(self, run_id, mode, holds):
         at = utcnow()
@@ -126,43 +148,7 @@ class Stage:
             run_id=run_id, grantor=OPERATOR, holder=OPERATOR, tools=tools, targets=targets,
             limits={"max_actions": 12, "max_shift_percent": 100}, ttl_seconds=3600,
         )
-        agent = self.gate.hand_down(
-            parent_id=root["_id"], holder=REPAIR_AGENT, tools=tools, targets=targets,
-            limits={"max_actions": 4, "max_shift_percent": 50}, ttl_seconds=1800,
-        )
-        if not agent.allowed:
-            raise RuntimeError("repair mandate was refused")
-        self.db.runs.update_one({"_id": run_id}, {"$set": {
-            "root_mandate_id": root["_id"], "agent_mandate_id": agent.mandate_id,
-        }})
-        tasks = []
-        for principal in WORKERS:
-            plan = [{**deepcopy(step), "action_id": action_id_for(run_id, principal, index)}
-                    for index, step in enumerate(DEMO_PLAN[principal])]
-            scope = {
-                "tools": sorted({str(s["tool"]) for s in plan}),
-                "targets": sorted({s["target"] for s in plan}),
-                "limits": {"max_actions": len(plan), "max_shift_percent": 50 if principal == WORKER_TWO else 0},
-            }
-            child = self.gate.hand_down(parent_id=agent.mandate_id, holder=principal,
-                                        ttl_seconds=900, **scope)
-            if not child.allowed:
-                raise RuntimeError("worker mandate was refused")
-            tasks.append({
-                "_id": f"{run_id}:{principal}", "run_id": run_id, "principal": principal,
-                "mandate_id": child.mandate_id, "plan": plan, "position": 0,
-                "planner": "scripted", "status": TaskStatus.RUNNING, "held_at": None,
-                "pid": None, "note": "Repair steps are saved; ready to start.", "updated_at": at,
-                "fixed_rules": scope,
-            })
-        tasks.append({
-            "_id": f"{run_id}:{REPAIR_AGENT}", "run_id": run_id, "principal": REPAIR_AGENT,
-            "mandate_id": agent.mandate_id, "plan": [s for t in tasks for s in t["plan"]],
-            "position": 4, "planner": "scripted", "status": TaskStatus.DONE,
-            "held_at": None, "pid": None,
-            "note": "Saved the repair and delegated narrower mandates to both workers.", "updated_at": at,
-        })
-        self.db.tasks.insert_many(tasks)
+        RepairAgent(self.db, self.gate, self.planner).prepare(run_id, root)
         for principal in WORKERS:
             self._spawn(run_id, principal)
         return StageResult(True, f"Started the {mode} repair run.", run_id=run_id)
@@ -243,11 +229,98 @@ class Stage:
         run = self._run(run_id)
         self.targets[ROUTER].restore()
         effects = self.db.effects.find({"run_id": run_id, "state": EffectState.SENT})
+        pending = False
         for effect in effects:
             if run["mode"] == Mode.STOPLINE:
-                self.sender.reconcile(effect["_id"])
+                result = self.sender.reconcile(effect["_id"])
+                pending |= result["state"] == EffectState.SENT
+                if effect.get("reverses"):
+                    self._mark_undo(effect["reverses"], result)
+            else:
+                target = self.targets[system_of(effect["target"])]
+                try:
+                    found = target.lookup(effect["_id"])
+                    evidence = found.evidence if found.found else target.fence(effect["_id"])
+                    self.db.effects.update_one({"_id": effect["_id"], "state": EffectState.SENT}, {"$set": {
+                        "state": EffectState.APPLIED if found.applied else EffectState.REJECTED,
+                        "evidence": evidence, "finished_at": utcnow(),
+                    }})
+                except TargetUnreachable:
+                    pending = True
         self._note(run_id, WORKER_TWO, "Restored the router and checked the outstanding sends.")
-        return StageResult(True, "Restored the router and reconciled outstanding sends.", run_id=run_id)
+        message = ("Restored the router; some outcomes are still pending." if pending
+                   else "Restored the router and reconciled outstanding sends.")
+        return StageResult(True, message, pending=pending, run_id=run_id)
+
+    def undo(self):
+        run_id = self.run_id
+        return self._command("undo", lambda: self._undo(run_id), run_id)
+
+    def _mark_undo(self, action_id, result):
+        mark = {EffectState.APPLIED: UndoMark.UNDONE, EffectState.SENT: UndoMark.UNKNOWN}.get(result["state"])
+        self.db.effects.update_one({"_id": action_id}, {"$set": {"undo": mark}})
+        return mark
+
+    def _undo(self, run_id):
+        run = self._run(run_id)
+        effects = list(self.db.effects.find({"run_id": run_id, "state": EffectState.APPLIED}))
+        effects.sort(key=lambda e: e.get("admitted_seq") or (e.get("evidence") or {}).get("at_epoch", 0), reverse=True)
+        pending, refusals = False, []
+        for effect in effects:
+            if effect.get("reverses") or effect.get("undo") in {UndoMark.UNDONE, UndoMark.NO_UNDO}:
+                continue
+            undo_id = f"{effect['_id']}-undo"
+            existing = self.db.effects.find_one({"_id": undo_id})
+            if not existing:
+                admitted = self.gate.undo(effect["_id"], mandate_id=run["root_mandate_id"],
+                                          principal=OPERATOR, targets=self.targets, undo_id=undo_id)
+                if not admitted.allowed:
+                    if admitted.reason == Reason.NO_UNDO:
+                        self.db.effects.update_one({"_id": effect["_id"]}, {"$set": {"undo": UndoMark.NO_UNDO}})
+                    else:
+                        refusals.append({"action_id": effect["_id"], "reason": admitted.reason})
+                    continue
+                undo_id = admitted.action_id
+            result = existing
+            if not existing or existing["state"] == EffectState.ADMITTED:
+                claim = self.sender.claim(undo_id)
+                if not claim.claimed:
+                    refusals.append({"action_id": effect["_id"], "reason": claim.reason})
+                    continue
+                try:
+                    result = self.sender.send(undo_id)
+                except (TargetTimeout, TargetUnreachable, httpx.RequestError):
+                    result = {"state": EffectState.SENT}
+            mark = self._mark_undo(effect["_id"], result)
+            pending |= mark == UndoMark.UNKNOWN
+            if mark is None:
+                reason = (result.get("evidence") or {}).get("reason", Reason.STATE_CHANGED)
+                refusals.append({"action_id": effect["_id"], "reason": reason})
+        note = ("Undo has outcomes pending reconciliation." if pending else
+                "Undo was refused for actions whose state or authority changed." if refusals else
+                "Finished undo under the operator's root mandate; marked tools with no inverse.")
+        self._note(run_id, REPAIR_AGENT, note)
+        return StageResult(not refusals, note, pending=pending, run_id=run_id, detail={"refusals": refusals})
+
+    def validation_rejection(self):
+        run_id = self.run_id
+        return self._command("validation_rejection", lambda: self._validate(run_id), run_id)
+
+    def _validate(self, run_id):
+        def malformed(session):
+            self.db.audit.insert_one({"_id": "invalid-" + secrets.token_hex(5), "run_id": run_id}, session=session)
+            # If setup was missed, abort rather than leave malformed audit data.
+            raise MissingValidator()
+
+        try:
+            run_transaction(malformed)
+        except OperationFailure as error:
+            if error.code != 121:
+                raise
+            return StageResult(True, "MongoDB rejected the malformed audit entry (validation error 121).",
+                               run_id=run_id, detail={"code": 121, "rejected": True})
+        except MissingValidator:
+            return StageResult(False, "The audit validator is missing; the attempted insert was rolled back.", run_id=run_id)
 
     def status(self):
         run_id = self.run_id

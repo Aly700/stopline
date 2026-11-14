@@ -1,5 +1,6 @@
 import multiprocessing
 import os
+import threading
 import time
 
 import pytest
@@ -36,7 +37,7 @@ class ProcessHandle:
 
 
 @pytest.fixture
-def rig():
+def rig(monkeypatch):
     from stopline.agents.stage import Stage
     from stopline.agents.worker import run_worker
 
@@ -48,6 +49,18 @@ def rig():
         sender = Sender(db, gate, targets)
         stage = Stage(db, gate, targets, sender, cluster="mock")
         processes = []
+
+        def transaction(callback):
+            with db.lock:
+                before = dict(db.data.items())
+                try:
+                    return callback(None), 1
+                except Exception:
+                    db.data.clear()
+                    db.data.update(before)
+                    raise
+
+        monkeypatch.setattr("stopline.agents.stage.run_transaction", transaction)
 
         def launch(run_id, principal):
             process = context.Process(target=run_worker,
@@ -116,6 +129,11 @@ def test_stopline_restart_refusal_names_stopper_and_time(rig):
 
 
 def test_kill_resume_skips_sent_shift_and_gets_refused_for_fifty(rig):
+    for _ in range(2):
+        kill_resume_sequence(rig)
+
+
+def kill_resume_sequence(rig):
     stage, db, targets = rig
     run_id = start_held(stage, db, Mode.STOPLINE)
     pid = task(db, run_id, WORKER_TWO)["pid"]
@@ -132,9 +150,12 @@ def test_kill_resume_skips_sent_shift_and_gets_refused_for_fifty(rig):
     assert resumed["pid"] != pid and resumed["position"] == 1
     assert OPERATOR in resumed["note"]
     assert not db.effects.find_one({"_id": action_id_for(run_id, WORKER_TWO, 1)})
-    assert len(db.target_log.find({"system": "router"})) == 1
+    assert len([row for row in db.target_log.find({"system": "router"})
+                if row["action_id"].startswith(run_id)]) == 1
+    assert len(db.send_calls.find({"action_id": twenty_five})) == 1
     assert stage.restore_and_reconcile().ok
     assert db.effects.find_one({"_id": twenty_five})["state"] == "applied"
+    eventually(lambda: all(p.poll() is not None for p in stage._processes.values()))
 
 
 def test_factory_is_exported_and_default_holds_are_not_mutated(rig):
@@ -180,3 +201,33 @@ def test_production_launcher_passes_database_and_sender_url(rig, monkeypatch):
     assert argv[1:] == ["-m", "stopline.agents.worker", "--run", "r-test", "--principal", WORKER_ONE]
     assert options["env"]["STOPLINE_DATABASE"] == db.name
     assert options["env"]["STOPLINE_SENDER_URL"] == "http://127.0.0.1:8765"
+
+
+def test_overlapping_starts_reserve_one_run_before_scheduling_work(rig, monkeypatch):
+    stage, db, targets = rig
+    entered = threading.Event()
+    release = threading.Event()
+    original = stage._command
+    results = []
+
+    def delayed(name, *args, **kwargs):
+        if name == "start_run":
+            entered.set()
+            release.wait(3)
+        return original(name, *args, **kwargs)
+
+    monkeypatch.setattr(stage, "_command", delayed)
+    first = threading.Thread(target=lambda: results.append(stage.start_run(Mode.FLAG)))
+    first.start()
+    assert entered.wait(1)
+    reserved = stage.run_id
+    # Release from another thread so a broken second start cannot block this test.
+    timer = threading.Timer(0.2, release.set)
+    timer.start()
+    second = stage.start_run(Mode.STOPLINE)
+    first.join(3)
+    timer.join()
+    assert second.pending and second.run_id == reserved
+    assert stage.run_id == reserved
+    assert results[0].run_id == reserved
+    assert len(db.runs.find()) == 1
