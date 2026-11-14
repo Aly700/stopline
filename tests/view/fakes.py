@@ -38,11 +38,19 @@ class Collection:
         return rows[0] if rows else None
 
     def aggregate(self, pipeline):
-        # The production read is a run plus bounded, run-scoped lookups.
-        rows = self.find().sort('created_at', -1).limit(1)
-        if rows:
-            for lookup in (part['$lookup'] for part in pipeline if '$lookup' in part):
-                rows[0][lookup['as']] = self.db[lookup['from']].find({'run_id': rows[0]['_id']})
+        rows = self.find()
+        for part in pipeline:
+            if '$match' in part:
+                rows = Cursor([row for row in rows if all(row.get(key) == value for key, value in part['$match'].items())])
+            elif '$sort' in part:
+                for key, direction in reversed(list(part['$sort'].items())):
+                    rows = rows.sort(key, direction)
+            elif '$limit' in part:
+                rows = rows.limit(part['$limit'])
+            elif '$lookup' in part:
+                lookup = part['$lookup']
+                for row in rows:
+                    row[lookup['as']] = self.db[lookup['from']].find({'run_id': row['_id']})
         self.db.reads += 1
         return iter(rows)
 

@@ -1,4 +1,5 @@
 """Read-only projections of the shared records. No local event history."""
+from collections import Counter
 from datetime import datetime, timezone
 
 from bson import ObjectId
@@ -103,12 +104,16 @@ def ready_key(run, tasks, receipt, effects):
     return None
 
 
-def read_state(db):
-    # A single Atlas round trip, including the current run, not one read per row.
-    pipeline = [{'$sort': {'created_at': -1, '_id': -1}}, {'$limit': 1}]
+def read_state(db, run_id=None):
+    # A single Atlas round trip, including the selected run, not one read per row.
+    pipeline = ([{'$match': {'_id': run_id}}] if run_id is not None else []) + [{'$sort': {'created_at': -1, '_id': -1}}, {'$limit': 1}]
     pipeline += [{'$lookup': {'from': name, 'localField': '_id', 'foreignField': 'run_id', 'as': name}}
                  for name in COLLECTIONS]
     bundle = next(iter(db['runs'].aggregate(pipeline)), None)
+    return project_state(bundle)
+
+
+def project_state(bundle):
     if bundle is None:
         return dict(ready_key=None, run=None, rows=[], omitted_rows=0, stop=None, receipt=None, workers=[], permissions=[])
     records = {name: bundle.pop(name, []) for name in COLLECTIONS}
@@ -178,7 +183,7 @@ def read_state(db):
                 row['action_id'] in receipt['covered'] and effect.get('state') == 'applied'
                 and evidence.get('system') == 'router' and evidence.get('action_id') == row['action_id']
                 and epoch(effect.get('finished_at')) > epoch(receipt['stopped_at']))
-    return serial(dict(ready_key=ready_key(run, records['tasks'], receipt, effects.values()), run=run, rows=rows[-8:], omitted_rows=max(0, len(rows) - 8), stop=stop,
+    return serial(dict(counts=dict(Counter(row['outcome'] for row in rows)), ready_key=ready_key(run, records['tasks'], receipt, effects.values()), run=run, rows=rows[-8:], omitted_rows=max(0, len(rows) - 8), stop=stop,
                        receipt=receipt_view, workers=records['tasks'], permissions=list(permissions.values())))
 
 
@@ -196,3 +201,20 @@ def read_chain(db, action_id):
     version = effect.get('policy_version') if effect else audit[-1].get('policy_version')
     policy = db['policies'].find_one({'_id': version}) if version is not None else None
     return serial(dict(action_id=action_id, effect=effect, permissions=chain, policy=policy, audit=audit))
+
+
+def read_runs(db):
+    """Recent run summaries, using the same outcome projection as the run view."""
+    pipeline = [{'$sort': {'created_at': -1, '_id': -1}}, {'$limit': 20}]
+    pipeline += [{'$lookup': {'from': name, 'localField': '_id', 'foreignField': 'run_id', 'as': name}}
+                 for name in COLLECTIONS]
+    summaries = []
+    for bundle in db['runs'].aggregate(pipeline):
+        state = project_state(bundle)
+        run, receipt = state['run'], state['receipt']
+        summaries.append(dict(id=run['_id'], mode=run['mode'], planner=run.get('planner'),
+                              status=run.get('status'), created_at=run.get('created_at'),
+                              stop_at=state['stop']['at'] if state['stop'] else None,
+                              receipt_status=receipt['status'] if receipt else None,
+                              counts=state['counts']))
+    return summaries

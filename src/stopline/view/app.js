@@ -7,6 +7,13 @@ const make = (tag, text, className) => {
   return node;
 };
 let current = null;
+let liveState = null;
+let selectedRun = null;
+let targetStates = null;
+let runsLoading = false;
+let runList = [];
+let navigationVersion = 0;
+let runSignature = '';
 let loading = false;
 let refreshAgain = false;
 let busy = false;
@@ -71,13 +78,22 @@ function stopLine(stop) {
 }
 function render(state) {
   current = state;
-  const pressed = state.last_key;
+  const pressed = selectedRun ? null : state.last_key;
   if (pressed && pressed.n !== seenKey) {
     // A key pressed anywhere (this page, another page, a script) shows on every open page.
     const first = seenKey === undefined;
     seenKey = pressed.n;
+    if (first) {
+      latestKey = pressed.key;
+      pending = pressed.pending ? {key:pressed.key} : null;
+      status(pressed.message, pressed.pending);
+    }
     if (!first) {
-      if (!busy) { latestKey = pressed.key; status(pressed.message, pressed.pending); }
+      if (!busy) {
+        latestKey = pressed.key;
+        pending = pressed.pending ? {key:pressed.key} : null;
+        status(pressed.message, pressed.pending);
+      }
       if (pressed.key === 'M' && pressed.lines?.length) {
         $('numbers-lines').replaceChildren(...pressed.lines.map(line => make('p', line)));
         $('numbers-note').hidden = false;
@@ -96,7 +112,13 @@ function render(state) {
     ? (repair ? `Permission ${repair.status === 'revoked' ? 'stopped' : 'granted'}: Operator → Repair agent → ${workers.length} workers` : 'Permission pending')
     : 'A repair agent. Two workers. One stop.';
   $('workers').replaceChildren(...state.workers.map(worker => make('span', `${person(worker.principal)}: ${{killed:'crashed', held:'held by test schedule', stopped:'stopped', done:'completed', running:'running'}[worker.status] || worker.status}`, `worker-${worker.status}`)));
-  $('readiness').textContent = state.ready_key ? `Ready for ${state.ready_key}` : '';
+  const ready = selectedRun ? null : state.ready_key;
+  $('readiness').textContent = ready ? `Ready for ${ready}` : '';
+  $('ready-key').textContent = ready || '';
+  $('ready-button').hidden = !ready;
+  $('action-count').textContent = `${state.rows.length + state.omitted_rows} recorded`;
+  document.querySelectorAll('.commands [data-key]').forEach(button => button.classList.toggle('next-command', button.dataset.key === ready));
+  updateEnvironment();
   const rows = [];
   let stopped = false;
   // The receipt has the full accounting; keep the live trace readable beside it.
@@ -125,19 +147,22 @@ function render(state) {
     heading.append(name, make('p', `Stopped by ${person(receipt.stopped_by)} · ${clock(receipt.stopped_at)}`), make('span', receipt.status.toUpperCase(), `receipt-state ${receipt.status === 'open' ? 'unknown' : 'completed'}`));
     $('receipt').replaceChildren(heading, ...receipt.rows.map(row => actionButton(row, true)));
   }
-  if (pending) pollOperation();
+  if (pending && !selectedRun) pollOperation();
 }
 async function refresh() {
   if (loading) { refreshAgain = true; return; }
   loading = true;
   try {
-    const response = await fetch('/api/state');
+    const selected = selectedRun;
+    const response = await fetch('/api/state' + (selected ? '?run_id=' + encodeURIComponent(selected) : ''));
     const state = await response.json();
     if (!response.ok || state.pending) throw new Error('pending');
+    if (selected !== selectedRun) return;
+    if (!selected) liveState = state;
     render(state);
-    $('connection').textContent = 'Live';
+    connection('Live');
   } catch (_) {
-    $('connection').textContent = 'Atlas pending · keeping confirmed state';
+    connection('Atlas pending · keeping confirmed state');
   } finally {
     loading = false;
     if (refreshAgain) { refreshAgain = false; setTimeout(refresh, 100); }
@@ -167,24 +192,37 @@ async function pollTargets() {
     const response = await fetch('/api/targets');
     if (!response.ok) throw new Error('pending');
     const states = await response.json();
+    targetStates = states;
+    updateEnvironment();
+    if (selectedRun) return;
     const signature = JSON.stringify(states);
     if (signature === targetSignature) return;
     targetSignature = signature;
-    const sections = [];
+    renderTargets(states);
+  } catch (_) {
+    targetStates = null;
+    updateEnvironment();
+    if (!selectedRun) $('targets').replaceChildren(make('p', 'Systems pending. Current state unknown.', 'quiet'));
+    targetSignature = '';
+  } finally { targetLoading = false; }
+}
+function renderTargets(states, saved = false) {
+  const sections = [];
     for (const name of ['cluster','router']) {
       const state = states[name] || {reachable:false};
-      const section = make('section', null, `system ${state.reachable ? '' : 'unreachable'}`);
+      const section = make('section', null, `system ${saved || state.reachable ? '' : 'unreachable'}`);
       const heading = make('h3', name === 'cluster' ? 'Cluster' : 'Router', 'system-heading');
-      heading.append(targetValue('span', name + '/reachable', state.reachable ? 'reachable' : 'unreachable'));
+      heading.append(targetValue('span', name + '/reachable', saved ? 'stored evidence' : state.reachable ? 'reachable' : 'unreachable'));
       section.append(heading);
-      if (!state.reachable) section.append(make('p', 'Current state unknown. Waiting for the system.', 'quiet'));
+      if (saved && !states[name]) section.append(make('p', 'No target evidence in the stored actions.', 'quiet'));
+      else if (!saved && !state.reachable) section.append(make('p', 'Current state unknown. Waiting for the system.', 'quiet'));
       else if (name === 'cluster') {
         for (const [deployment, data] of Object.entries(state.deployments || {})) {
           const block = make('div', null, 'deployment'); block.append(make('h3', deployment));
           const list = make('dl');
           const prefix = `cluster/${deployment}/`;
           definition(list, 'Image', data.image, prefix + 'image');
-          definition(list, 'Revision', `${data.revision ?? '—'}${data.ready === false ? ' · not ready' : ''}`, prefix + 'revision');
+          definition(list, 'Version / rev.', `${data.version ?? '—'} / ${data.revision ?? '—'}${data.ready === false ? ' · not ready' : ''}`, prefix + 'revision');
           definition(list, 'Last restart', data.restarted_at ? clock(data.restarted_at) : 'never', prefix + 'restart');
           definition(list, 'Action id', data.action_id || 'none yet', prefix + 'action');
           block.append(list); section.append(block);
@@ -192,8 +230,11 @@ async function pollTargets() {
       } else {
         const weights = make('p', null, 'weights');
         for (const [region, percent] of Object.entries(state.weights || {})) {
-          if (weights.childNodes.length) weights.append(document.createTextNode(' / '));
-          weights.append(document.createTextNode(region.replace('region-', 'Region ').toUpperCase() + ' '), targetValue('span', 'router/' + region, `${percent}%`));
+          const weight = make('span', null, 'weight');
+          const value = targetValue('span', 'router/' + region, `${percent}%`);
+          value.classList.add('weight-value');
+          weight.append(make('span', region.replace('region-', 'Region ').toUpperCase()), value);
+          weights.append(weight);
         }
         section.append(weights);
         const list = make('dl'); definition(list, 'Action id', state.last_action_id || 'none yet', 'router/action'); section.append(list);
@@ -201,10 +242,19 @@ async function pollTargets() {
       sections.push(section);
     }
     $('targets').replaceChildren(...sections);
-  } catch (_) {
-    $('targets').replaceChildren(make('p', 'Systems pending. Current state unknown.', 'quiet'));
-    targetSignature = '';
-  } finally { targetLoading = false; }
+}
+function renderHistoricalTargets(state) {
+  const saved = {};
+  const rows = [...(state.receipt?.rows || []), ...state.rows].sort((a,b) => (a.evidence?.at_epoch || 0) - (b.evidence?.at_epoch || 0));
+  for (const row of rows) {
+    const evidence = row.evidence;
+    if (evidence?.system === 'cluster' && evidence.after && evidence.deployment) {
+      saved.cluster ||= {deployments:{}};
+      saved.cluster.deployments[evidence.deployment] = evidence.after;
+    }
+    if (evidence?.system === 'router' && evidence.weights) saved.router = {weights:evidence.weights, last_action_id:evidence.action_id};
+  }
+  renderTargets(saved, true);
 }
 let seenKey;
 function status(message, isPending = false) { $('key-status').textContent = `${latestKey ? latestKey + ' · ' : ''}${message}`; $('key-status').classList.toggle('pending', isPending); }
@@ -217,7 +267,7 @@ function showValidation(result) {
   validationTimer = setTimeout(() => { $('validation-panel').hidden = true; }, 5000);
 }
 async function pollOperation() {
-  if (!pending || busy || operationLoading) return;
+  if (!pending || busy || operationLoading || selectedRun) return;
   operationLoading = true;
   const request = pending;
   try {
@@ -232,9 +282,13 @@ async function pollOperation() {
   finally { operationLoading = false; }
 }
 async function keypress(key) {
+  if (key === 'F') { toggleStage(); return; }
+  if (selectedRun && !['/', 'P', 'T', 'M'].includes(key)) {
+    latestKey = key; status('Earlier run is read-only. Back to live to use commands.'); return;
+  }
   if (key === '/') { openAsk(); return; }
   if (busy) return;
-  pending = null;
+  if (!selectedRun) pending = null;
   if (key === 'P') {
     latestKey = key;
     if (!current?.run) { status('Start a run to open its report.'); return; }
@@ -340,7 +394,8 @@ document.addEventListener('keydown', event => {
   }
   if (event.repeat || event.ctrlKey || event.metaKey || event.altKey || /INPUT|TEXTAREA|SELECT/.test(event.target.tagName)) return;
   const key = event.key.toUpperCase();
-  if (!'123SKWRUVMPXT/'.includes(key) || key.length !== 1 || $('chain-dialog').open) return;
+  if (key === 'F') { event.preventDefault(); toggleStage(); return; }
+  if (!'123SKWRUVMPXT/F'.includes(key) || key.length !== 1 || $('chain-dialog').open) return;
   if ($('numbers-dialog').open && key !== 'M') $('numbers-dialog').close();
   event.preventDefault(); keypress(key);
 });
@@ -351,16 +406,116 @@ events.addEventListener('rebuild', refresh);
 events.addEventListener('change', event => {
   const payload = JSON.parse(event.data);
   if (payload.state) {
-    render(payload.state);
-    $('connection').textContent = payload.connected ? 'Live' : 'Updates reconnecting';
+    liveState = payload.state;
+    if (!selectedRun) render(payload.state);
+    connection(payload.connected ? 'Live' : 'Updates reconnecting');
+    pollRuns();
     pollTargets();
   } else {
-    $('connection').textContent = 'Atlas pending · keeping confirmed state';
+    connection('Atlas pending · keeping confirmed state');
   }
 });
-events.onerror = () => { $('connection').textContent = 'Reconnecting · keeping confirmed state'; };
-refresh(); pollTargets();
+events.onerror = () => connection('Reconnecting · keeping confirmed state');
+restoreStage();
+refresh(); pollTargets(); pollRuns();
 setInterval(pollTargets, 1500);
 setInterval(pollOperation, 750);
 setInterval(() => { if (pending || $('connection').textContent !== 'Live') refresh(); }, 2000);
 window.addEventListener('pagehide', () => events.close());
+
+function connection(message) {
+  $('connection').textContent = message;
+  $('connection').classList.toggle('connected', message === 'Live');
+  $('env-atlas').textContent = message === 'Live' ? 'Connected' : 'Reconnecting';
+}
+function updateEnvironment() {
+  const run = liveState?.run || (!selectedRun ? current?.run : null);
+  $('env-cluster').textContent = `${run?.cluster || '—'} · ${targetStates?.cluster?.reachable ? 'reachable' : 'unknown'}`;
+  $('env-router').textContent = targetStates ? (targetStates.router?.reachable ? 'Reachable' : 'Unreachable') : 'Pending';
+  const planner = run?.planner;
+  $('env-model').textContent = !planner ? '—' : ['scripted', 'saved'].includes(planner) ? 'saved plan' : planner.replace(/^deep agent\s*[·:]?\s*/, '');
+  $('env-trace').textContent = run ? (run.trace_url ? 'On' : 'Off') : '—';
+}
+function setStage(enabled) {
+  document.body.classList.toggle('stage', enabled);
+  $('stage-toggle').setAttribute('aria-pressed', String(enabled));
+  $('stage-toggle').querySelector('span').textContent = enabled ? 'Console' : 'Stage';
+  try { localStorage.setItem('stopline-stage', String(enabled)); } catch (_) { /* Storage may be disabled. */ }
+}
+function restoreStage() {
+  try { setStage(localStorage.getItem('stopline-stage') === 'true'); } catch (_) { setStage(false); }
+}
+function toggleStage() { setStage(!document.body.classList.contains('stage')); }
+$('stage-toggle').addEventListener('click', toggleStage);
+$('ready-button').addEventListener('click', () => { if (!selectedRun && current?.ready_key) keypress(current.ready_key); });
+document.querySelectorAll('[data-section]').forEach(button => button.addEventListener('click', () => {
+  const section = $(button.dataset.section);
+  if (section.hidden) { latestKey = ''; status('No receipt yet. A confirmed stop creates the StopLine receipt.'); return; }
+  section.scrollIntoView({block:'start', behavior:'instant'});
+  document.querySelectorAll('[data-section]').forEach(item => item.classList.toggle('active', item === button));
+}));
+async function pollRuns() {
+  if (runsLoading) return;
+  runsLoading = true;
+  try {
+    const response = await fetch('/api/runs');
+    if (!response.ok) throw new Error('pending');
+    runList = await response.json();
+    renderRuns();
+  } catch (_) { if (!runList.length) $('runs-list').replaceChildren(make('p', 'Runs pending.', 'quiet')); }
+  finally { runsLoading = false; }
+}
+function renderRuns() {
+  $('runs-count').textContent = runList.length || '';
+  const selected = selectedRun || liveState?.run?._id || current?.run?._id;
+  const signature = JSON.stringify([runList, selected]);
+  if (signature === runSignature) return;
+  runSignature = signature;
+  const focused = document.activeElement?.dataset.runId;
+  $('runs-list').replaceChildren(...runList.map((run, index) => {
+    const label = String(run.planner || '').startsWith('deep agent') ? 'Live agent' : ({flag:'Stop flag', stopline:'StopLine', fixed:'Fixed rules'})[run.mode] || run.mode;
+    const button = make('button', null, 'run-item');
+    button.dataset.runId = run.id;
+    button.setAttribute('aria-current', String(run.id === selected));
+    button.title = `${label} · ${clock(run.created_at)} · ${run.status} · ${run.id}`;
+    button.setAttribute('aria-label', button.title);
+    const time = make('time', clock(run.created_at)); time.dateTime = run.created_at;
+    button.append(make('span', null, `run-dot ${run.status === 'running' ? 'running' : run.status === 'stopped' ? 'stopped' : ''}`), make('span', label, 'run-mode'), time, make('span', index === 0 ? 'live' : run.receipt_status || run.status, 'run-status'));
+    button.addEventListener('click', () => index === 0 ? backToLive() : openRun(run.id));
+    return button;
+  }));
+  if (!runList.length) $('runs-list').append(make('p', 'No runs yet. Press 1 to begin.', 'quiet'));
+  if (focused) [...$('runs-list').children].find(button => button.dataset.runId === focused)?.focus({preventScroll:true});
+}
+async function openRun(id) {
+  const version = ++navigationVersion;
+  try {
+    const response = await fetch('/api/state?run_id=' + encodeURIComponent(id));
+    const state = await response.json();
+    if (!response.ok || !state.run) throw new Error('missing');
+    if (version !== navigationVersion) return;
+    selectedRun = id;
+    closeAsk();
+    $('history-banner').hidden = false;
+    $('history-id').textContent = id;
+    $('target-scope').textContent = 'Stored evidence';
+    renderHistoricalTargets(state);
+    document.querySelectorAll('[data-key]').forEach(button => { button.disabled = !['/', 'P', 'T', 'M'].includes(button.dataset.key); });
+    render(state); renderRuns();
+    $('workspace').scrollTop = 0;
+    latestKey = ''; status('Earlier run · read-only.');
+  } catch (_) { if (version === navigationVersion) status('Run unavailable. Keeping the confirmed view.'); }
+}
+function backToLive() {
+  navigationVersion += 1;
+  selectedRun = null;
+  $('history-banner').hidden = true;
+  $('target-scope').textContent = 'Live';
+  document.querySelectorAll('[data-key]').forEach(button => { button.disabled = false; });
+  targetSignature = '';
+  if (liveState) render(liveState);
+  renderRuns(); refresh(); pollTargets();
+  latestKey = ''; status('Returned to live.');
+}
+$('back-live').addEventListener('click', backToLive);
+setInterval(pollRuns, 5000);

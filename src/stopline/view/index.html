@@ -9,51 +9,57 @@
   <script src="/app.js" defer></script>
 </head>
 <body>
-  <header>
-    <div class="brand">StopLine<span>Every action accounted for.</span></div>
-    <div class="mode"><span id="mode">READY</span><span id="run-label">Press 1 to begin</span></div>
-  </header>
-  <main id="main">
-    <section class="trace" aria-labelledby="trace-title">
-      <div class="section-heading"><h1 id="trace-title">The actions</h1><span id="connection" role="status">Connecting…</span></div>
-      <p id="permission-note" class="permission-note">A repair agent. Two workers. One stop.</p>
-      <div id="workers" class="workers"></div>
-      <p id="readiness" class="quiet" aria-live="polite"></p>
-      <div id="trace" class="trace-rows" aria-live="polite"></div>
-      <p id="omitted" class="quiet"></p>
-    </section>
-    <section class="targets" aria-labelledby="target-title">
-      <div class="section-heading"><h2 id="target-title">The systems themselves</h2></div>
-      <div id="targets"><p class="quiet">Waiting for the systems…</p></div>
-    </section>
-  </main>
-  <section id="receipt" class="receipt" aria-labelledby="receipt-title" hidden></section>
-  <aside id="validation-panel" role="status" hidden><strong>Database response</strong><pre id="validation-text"></pre></aside>
-  <footer>
-    <section id="ask-panel" aria-label="Ask the audit" hidden>
-      <div id="ask-results" hidden>
-        <h2 id="ask-question"></h2>
-        <p id="ask-engine" class="quiet"></p>
-        <p id="ask-message" role="status"></p>
-        <div id="ask-rows"></div>
-      </div>
-      <form id="ask-form">
-        <input id="ask-input" aria-label="Ask the audit" placeholder="Ask the audit: what did worker two do after the stop?" autocomplete="off">
-        <button type="button" id="ask-close">Close <kbd>Esc</kbd></button>
-      </form>
-    </section>
-    <nav aria-label="Demo keys">
-      <button data-key="1"><kbd>1</kbd> Stop flag</button><button data-key="2"><kbd>2</kbd> StopLine</button><button data-key="3"><kbd>3</kbd> Live agent</button>
-      <button data-key="S"><kbd>S</kbd> Stop</button><button data-key="K"><kbd>K</kbd> Cut + kill</button>
-      <button data-key="W"><kbd>W</kbd> Resume</button><button data-key="R"><kbd>R</kbd> Restore</button>
-      <button data-key="U"><kbd>U</kbd> Undo</button><button data-key="V"><kbd>V</kbd> Validation</button>
-      <button data-key="M"><kbd>M</kbd> Numbers</button><button data-key="P"><kbd>P</kbd> Report</button>
-      <button data-key="X"><kbd>X</kbd> Over limit</button><button data-key="T"><kbd>T</kbd> Trace</button>
-      <button data-key="/"><kbd>/</kbd> Ask</button>
+  <aside class="rail" aria-label="Workspace">
+    <a class="brand" href="/" aria-label="StopLine home"><span class="brand-mark" aria-hidden="true"></span><span class="brand-copy">StopLine<small>Every action accounted for.</small></span></a>
+    <nav class="run-nav" aria-label="This run">
+      <h2 class="rail-heading">This run</h2>
+      <button class="nav-item active" data-section="trace" title="Actions"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 4h12M4 10h12M4 16h8"/></svg><span>Actions</span></button>
+      <button class="nav-item" data-section="receipt" title="Receipt"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 2h10v16l-2-1-3 1-3-1-2 1V2Zm3 4h4M8 10h4"/></svg><span>Receipt</span></button>
+      <button class="nav-item" data-key="P" title="Report"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 2h7l4 4v12H5V2Zm7 0v5h4M8 11h5M8 14h5"/></svg><span>Report</span><kbd>P</kbd></button>
+      <button class="nav-item" data-key="/" title="Ask the audit"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8" cy="8" r="5"/><path d="m12 12 5 5"/></svg><span>Ask the audit</span><kbd>/</kbd></button>
+      <button class="nav-item" data-key="M" title="Numbers"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 2 3 18M13 2l-2 16M1 7h16M1 13h16"/></svg><span>Numbers</span><kbd>M</kbd></button>
     </nav>
-    <div class="footnote"><span id="key-status" role="status">No key pressed.</span><span id="context">Timing controlled · router built for this test</span></div>
-  </footer>
-  <dialog id="chain-dialog" aria-labelledby="chain-title"><button class="close" data-close="chain-dialog">Close <kbd>Esc</kbd></button><h2 id="chain-title">This action’s permission</h2><div id="chain-content"></div></dialog>
-  <dialog id="numbers-dialog" aria-labelledby="numbers-title"><button class="close" data-close="numbers-dialog">Close <kbd>Esc</kbd></button><h2 id="numbers-title">The measured results</h2><div id="numbers-lines"></div><p id="numbers-note" class="quiet">measured on this laptop against Atlas</p></dialog>
+    <section class="runs-section" aria-labelledby="runs-title"><h2 id="runs-title" class="rail-heading">Runs <span id="runs-count"></span></h2><div id="runs-list"><p class="quiet">Loading runs…</p></div></section>
+    <section class="environment" aria-labelledby="environment-title"><h2 id="environment-title" class="rail-heading">Environment <span class="env-icon" aria-hidden="true">●</span></h2><dl><dt>Atlas</dt><dd id="env-atlas">Connecting</dd><dt>Cluster</dt><dd id="env-cluster">Pending</dd><dt>Router</dt><dd id="env-router">Pending</dd><dt>Model</dt><dd id="env-model">—</dd><dt>Trace</dt><dd id="env-trace">—</dd></dl></section>
+  </aside>
+  <div class="console">
+    <header class="topbar">
+      <div class="mode"><span class="eyebrow">Operator console</span><h1 id="mode">READY</h1><span id="run-label">Press 1 to begin</span></div>
+      <div class="topbar-tools"><span id="connection" role="status">Connecting…</span><button id="ready-button" class="ready-button" hidden><span id="readiness" aria-live="polite"></span><kbd id="ready-key"></kbd></button><button id="stage-toggle" class="stage-toggle" aria-pressed="false" title="Toggle stage mode (F)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 3H3v4m10-4h4v4M3 13v4h4m10-4v4h-4"/></svg><span>Stage</span><kbd>F</kbd></button></div>
+    </header>
+    <div id="history-banner" class="history-banner" hidden><span>Earlier run · read-only <span id="history-id"></span></span><button id="back-live">Back to live <span aria-hidden="true">→</span></button></div>
+    <div class="workspace" id="workspace">
+      <main id="main">
+        <section class="trace" aria-labelledby="trace-title">
+          <div class="section-heading"><h2 id="trace-title">The actions</h2><span id="action-count" class="quiet"></span></div>
+          <p id="permission-note" class="permission-note">A repair agent. Two workers. One stop.</p>
+          <div id="workers" class="workers"></div>
+          <div class="table-heading" aria-hidden="true"><span>Agent / action</span><span>Outcome</span></div>
+          <div id="trace" class="trace-rows" aria-live="polite"></div>
+          <p id="omitted" class="quiet"></p>
+        </section>
+        <section class="targets" aria-labelledby="target-title">
+          <div class="section-heading"><h2 id="target-title">The systems themselves</h2><span id="target-scope" class="quiet">Live</span></div>
+          <div id="targets"><p class="quiet">Waiting for the systems…</p></div>
+        </section>
+      </main>
+      <section id="receipt" class="receipt" aria-labelledby="receipt-title" hidden></section>
+    </div>
+    <aside id="validation-panel" role="status" hidden><strong>Database response</strong><pre id="validation-text"></pre></aside>
+    <footer>
+      <section id="ask-panel" aria-label="Ask the audit" hidden>
+        <div class="ask-heading"><div><h2>Ask the audit</h2><p class="quiet">Search stored entries by meaning.</p></div><button type="button" id="ask-close">Close <kbd>Esc</kbd></button></div>
+        <div id="ask-results" hidden><h3 id="ask-question"></h3><p id="ask-engine" class="quiet"></p><p id="ask-message" role="status"></p><div id="ask-rows"></div></div>
+        <form id="ask-form"><input id="ask-input" aria-label="Ask the audit" placeholder="What did worker two do after the stop?" autocomplete="off"><button type="submit" class="primary">Search <kbd>↵</kbd></button></form>
+      </section>
+      <nav class="commands" aria-label="Demo keys">
+        <button data-key="1"><kbd>1</kbd> Stop flag</button><button data-key="2"><kbd>2</kbd> StopLine</button><button data-key="3"><kbd>3</kbd> Live agent</button>
+        <button data-key="S" class="stop-command"><kbd>S</kbd> Stop</button><button data-key="K"><kbd>K</kbd> Cut + kill</button><button data-key="W"><kbd>W</kbd> Resume</button><button data-key="R"><kbd>R</kbd> Restore</button><button data-key="U"><kbd>U</kbd> Undo</button><button data-key="V"><kbd>V</kbd> Validation</button><button data-key="M"><kbd>M</kbd> Numbers</button><button data-key="P"><kbd>P</kbd> Report</button><button data-key="X"><kbd>X</kbd> Over limit</button><button data-key="T"><kbd>T</kbd> Trace</button><button data-key="/"><kbd>/</kbd> Ask</button>
+      </nav>
+      <div class="footnote"><span id="key-status" role="status">No key pressed.</span><span id="context">Timing controlled · router built for this test</span></div>
+    </footer>
+  </div>
+  <dialog id="chain-dialog" aria-labelledby="chain-title"><button class="close" data-close="chain-dialog">Close <kbd>Esc</kbd></button><span class="eyebrow">Audit evidence</span><h2 id="chain-title">This action’s permission</h2><div id="chain-content"></div></dialog>
+  <dialog id="numbers-dialog" aria-labelledby="numbers-title"><button class="close" data-close="numbers-dialog">Close <kbd>Esc</kbd></button><span class="eyebrow">Verification</span><h2 id="numbers-title">The measured results</h2><div id="numbers-lines"></div><p id="numbers-note" class="quiet">measured on this laptop against Atlas</p></dialog>
 </body>
 </html>

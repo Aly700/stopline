@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response, StreamingRes
 from starlette.concurrency import run_in_threadpool
 
 from .feed import ChangeFeed
-from .records import read_chain, read_state, serial
+from .records import read_chain, read_runs, read_state, serial
 
 ASSETS = Path(__file__).parent
 OPERATIONS = {'1': 'start_run', '2': 'start_run', 'S': 'press_stop', 'K': 'cut_and_kill',
@@ -80,11 +80,23 @@ def create_app(db, stage, targets, numbers=None):
         return result
 
     @app.get('/api/state')
-    def state():
+    def state(run_id: str | None = None):
         try:
-            return current_state()
+            result = current_state() if run_id is None else dict(read_state(db, run_id), last_key=None, read_only=True)
+            if run_id is not None:
+                if result['run'] is None:
+                    return JSONResponse({'detail': 'Run not found.'}, status_code=404)
+                result['ready_key'] = None
+            return result
         except Exception:
             return JSONResponse({'pending': True, 'message': 'Atlas pending. Keeping the last confirmed state.'}, status_code=503)
+
+    @app.get('/api/runs')
+    def runs():
+        try:
+            return read_runs(db)
+        except Exception:
+            return JSONResponse({'pending': True, 'message': 'Runs pending.'}, status_code=503)
 
     @app.get('/api/targets')
     async def target_state():

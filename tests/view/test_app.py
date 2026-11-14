@@ -210,3 +210,70 @@ def test_sse_carries_the_confirmed_rows(rig):
     payload = asyncio.run(receive())
     assert len(payload['state']['rows']) == 3
     assert payload['state']['run']['mode'] == 'stopline'
+
+
+def test_recent_runs_and_historical_state_are_read_only(rig):
+    client, db, stage, app = rig
+    client.post('/api/key/1')
+    client.post('/api/key/S')
+    earlier = client.get('/api/state').json()
+    client.post('/api/key/2')
+    calls = list(stage.calls)
+    runs = client.get('/api/runs').json()
+    assert [run['id'] for run in runs] == ['run-2', 'run-1']
+    assert runs[1]['counts'] == {'completed': 2, 'RAN AFTER STOP': 1}
+    assert runs[1]['stop_at'] == earlier['stop']['at']
+    assert runs[1]['receipt_status'] is None
+    saved = client.get('/api/state', params={'run_id': 'run-1'}).json()
+    assert saved['rows'] == earlier['rows']
+    assert saved['run'] == earlier['run']
+    assert saved['ready_key'] is None and saved['last_key'] is None
+    assert saved['read_only'] is True
+    assert stage.calls == calls
+    assert client.get('/api/state').json()['run']['_id'] == 'run-2'
+    assert client.get('/api/state?run_id=missing').status_code == 404
+
+
+def test_run_counts_include_rows_omitted_from_timeline(rig):
+    client, db, stage, app = rig
+    stage.start_run('flag')
+    for step in range(15):
+        action = stage.effect(1, 0, 'applied', 10 + step)
+        action['_id'] = f'extra-{step}'
+    runs = client.get('/api/runs').json()
+    assert runs[0]['counts'] == {'completed': 17}
+    assert len(client.get('/api/state').json()['rows']) == 8
+
+
+def test_runs_failure_is_pending_and_sanitized(rig, monkeypatch):
+    client, db, stage, app = rig
+    def failed(*args):
+        raise RuntimeError('private connection details')
+    monkeypatch.setattr('stopline.view.read_runs', failed)
+    response = client.get('/api/runs')
+    assert response.status_code == 503
+    assert response.json()['pending'] is True
+    assert 'private connection details' not in response.text
+
+
+def test_saved_running_run_has_no_command_hint(rig):
+    client, db, stage, app = rig
+    stage.start_run('flag')
+    assert client.get('/api/state').json()['ready_key'] == 'S'
+    stage.start_run('stopline')
+    saved = client.get('/api/state?run_id=run-1').json()
+    assert saved['run']['status'] == 'running'
+    assert saved['ready_key'] is None
+    assert saved['read_only'] is True
+
+
+def test_recent_runs_are_bounded_and_read_in_one_round_trip(rig):
+    client, db, stage, app = rig
+    for _ in range(24):
+        stage.start_run('flag')
+    before = db.reads
+    response = client.get('/api/runs').json()
+    assert len(response) == 20
+    assert response[0]['id'] == 'run-24'
+    assert response[-1]['id'] == 'run-5'
+    assert db.reads == before + 1
