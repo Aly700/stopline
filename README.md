@@ -18,6 +18,8 @@ An agent that hands work to other agents is hard to stop. The usual answer is a 
 - **The receipt closes only on evidence.** An action that was sent and never answered stays "unknown". StopLine asks the target about that action by its id. If the target applied it, that is recorded. If it has no record, StopLine places a fence for that id so a late arrival is refused, and records that it had no effect.
 - **Undo** is a new action that reverses an earlier one, through the same check, under the permission of the person who stopped the run. Actions with no inverse are marked "no undo".
 - **A reviewer's report** rebuilds a whole run from the stored records and re-checks seven guarantees.
+- **An operator's console** shows the run as it happens, keeps every earlier run to open again, and can be asked about the audit trail in plain words.
+- **A live agent** built with Deep Agents runs through the same check. Stop it mid-run and its next tool call is refused.
 
 One action:
 
@@ -131,6 +133,9 @@ uv run python -m stopline                   # then open http://127.0.0.1:8785
 # or, with no cluster
 uv run python -m stopline --cluster mock
 
+# optional: the live agent behind key 3 (Deep Agents, a Gemini, Anthropic or OpenAI key; LANGSMITH_API_KEY turns tracing on)
+uv sync --extra agent
+
 # optional flags
 uv run python -m stopline --voice           # speaks the receipt aloud (needs ELEVENLABS_API_KEY)
 uv run python -m stopline --model           # a language model proposes the repair (needs GEMINI_API_KEY).
@@ -150,6 +155,7 @@ uv run python -m stopline.report --out run.html   # the reviewer's report for th
 |---|---|
 | `1` | Baseline run: workers read a stop flag |
 | `2` | StopLine run: every action passes the check |
+| `3` | Live agent: a language-model agent (Deep Agents) makes the repair, and every tool call passes the same check |
 | `S` | Stop |
 | `K` | Cut the router off mid-call and kill worker two |
 | `W` | Resume worker two from its saved plan |
@@ -159,6 +165,8 @@ uv run python -m stopline.report --out run.html   # the reviewer's report for th
 | `M` | The measured numbers |
 | `P` | Open the reviewer's report |
 | `X` | Worker two asks for 90%, over its 50% limit, and is refused |
+| `T` | Open the live agent's trace in LangSmith; each tool call there carries the check's decision |
+| `F` | Stage mode: larger rows, no side rail, for a projector |
 | `/` | Ask the audit: finds stored entries by meaning, writes no answer (needs `VOYAGE_API_KEY`) |
 
 ```
@@ -227,6 +235,7 @@ src/stopline/report/             the reviewer's report; checks.py holds the seve
 src/stopline/search/             ask the audit: embeddings and vector search over audit entries
 src/stopline/voice/              spoken receipt
 src/stopline/llm.py              language-model planner
+src/stopline/deep/               the live agent: tools that go through the check, and its trace
 src/stopline/app.py              wires it together
 scripts/                         demo.sh, play.sh, test-all.sh
 k8s/, demo-app/                  the cluster target
