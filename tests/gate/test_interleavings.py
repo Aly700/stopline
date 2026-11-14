@@ -272,7 +272,7 @@ def test_tree_size_cap_is_enforced_by_hand_down_and_stop(gate, run_id):
     assert len(receipt["revoked"]) == MAX_TREE_SIZE
 
 
-def test_concurrent_replay_creates_one_effect_and_one_allow(gate, run_id, monkeypatch):
+def test_concurrent_replay_creates_one_effect_and_two_decisions(gate, run_id, monkeypatch):
     mandate = root(gate, run_id)
     proposed = action(mandate)
     pause = hold_first_mandate_read(monkeypatch, gate, mandate["_id"])
@@ -287,7 +287,8 @@ def test_concurrent_replay_creates_one_effect_and_one_allow(gate, run_id, monkey
     assert first.allowed and replay.allowed and replay.replayed and replay.attempts == 2
     assert first.seq == replay.seq == 1
     assert gate.db.effects.count_documents({"_id": proposed.action_id}) == 1
-    assert gate.db.audit.count_documents({"action_id": proposed.action_id, "kind": "allow"}) == 1
+    assert gate.db.audit.count_documents({"action_id": proposed.action_id, "kind": "allow"}) == 2
+    assert gate.db.audit.count_documents({"action_id": proposed.action_id, "detail.replayed": True}) == 1
     assert_root_conflict("replayed_admit", mandate["_id"])
 
 

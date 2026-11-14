@@ -103,8 +103,7 @@ def test_4_stop_and_claim(gate, run_id, monkeypatch, winner):
         assert gate.db.effects.find_one({"_id": proposed.action_id})["state"] == EffectState.SENT
         assert receipt["status"] == "open"
         assert call("receipt", gate.receipt, receipt["_id"]).rows[0].state == "sent"
-        assert any(f["label"] == "stop" and f["collection"] == "effects" and f["code"] == 112
-                   for f in commands.failures)
+        assert not any(f["label"] == "stop" for f in commands.failures)
     assert proposed.action_id in receipt["covered"]
     assert not call("claim_after_stop", gate.claim, proposed.action_id, "sender").claimed
 

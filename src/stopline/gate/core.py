@@ -25,6 +25,8 @@ from stopline.contract import (
 from .schema import AUDIT_VALIDATOR, POLICY_HASH, POLICY_TEXT, POLICY_VERSION
 
 TICK = [{"$set": {"seq": {"$add": ["$seq", 1]}, "clock": "$$NOW"}}]
+MAX_ACTIONS = 1_000  # bounds receipt coverage and the effects one stop rewrites
+DECISION_KINDS = [AuditKind.ALLOW, AuditKind.HAND_DOWN, AuditKind.STOP]
 
 
 @dataclass
@@ -72,6 +74,18 @@ class Gate:
         self.db.policies.update_one({"_id": POLICY_VERSION}, {"$setOnInsert": {
             "text": POLICY_TEXT, "hash": POLICY_HASH, "created_at": self._now(),
         }}, upsert=True)
+        duplicates = list(self.db.audit.aggregate([
+            {"$match": {"kind": {"$in": DECISION_KINDS}}},
+            {"$group": {"_id": {"r": "$root_id", "s": "$seq"}, "n": {"$sum": 1}}},
+            {"$match": {"n": {"$gt": 1}}}, {"$limit": 5},
+        ]))
+        if not duplicates:
+            try:
+                self.db.audit.create_index(
+                    [("root_id", 1), ("seq", 1)], unique=True, name="one_decision_per_counter",
+                    partialFilterExpression={"kind": {"$in": DECISION_KINDS}})
+            except DuplicateKeyError:
+                pass  # a legacy writer inserted a duplicate after the preflight query
 
     def _now(self):
         now = self.db.command("hello")["localTime"]
@@ -82,7 +96,7 @@ class Gate:
     def _valid_limits(limits):
         return (set(limits) == {"max_actions", "max_shift_percent"}
                 and all(type(v) is int for v in limits.values())
-                and limits["max_actions"] >= 0 and 0 <= limits["max_shift_percent"] <= 100)
+                and 0 <= limits["max_actions"] <= MAX_ACTIONS and 0 <= limits["max_shift_percent"] <= 100)
 
     @staticmethod
     def _mandate(*, mandate_id, run_id, root_id, parent_id, depth, grantor, holder,
@@ -217,6 +231,7 @@ class Gate:
                 and effect["args_hash"] == args_hash(action.args))
 
     def admit(self, action: Action) -> Admission:
+        """Audit every committed tick, including replay, so a deleted decision row leaves a visible gap."""
         attempts = 0
 
         def admission(session):
@@ -234,6 +249,11 @@ class Gate:
                     raise Refused(Reason.SAME_ID_DIFFERENT_ARGS, context)
                 context = self._context(session, action.mandate_id)
                 self._check_chain(context)
+                self.db.audit.insert_one(self._audit(
+                    run_id=action.run_id, kind=AuditKind.ALLOW, principal=action.principal,
+                    mandate_id=action.mandate_id, root_id=context.root["_id"], action_id=action.action_id,
+                    seq=context.root["seq"], at=context.root["clock"],
+                    detail={"replayed": True, "admitted_seq": existing["admitted_seq"]}), session=session)
                 return Admission(True, action.action_id, Reason.OK, existing["admitted_seq"], replayed=True)
             context = self._context(session, action.mandate_id)
             self._check_chain(context)
@@ -331,6 +351,9 @@ class Gate:
         identity = uuid4().hex
 
         def stopping(session):
+            self.db.effects.update_many(
+                {"chain": mandate_id, "state": EffectState.ADMITTED},
+                [{"$set": {"state": EffectState.CANCELLED, "finished_at": "$$NOW"}}], session=session)
             context = self._context(session, mandate_id)
             if by not in {m["holder"] for m in context.chain}:
                 raise Refused(Reason.NOT_AUTHORISED, context)
@@ -347,9 +370,6 @@ class Gate:
             self.db.mandates.update_many({"_id": {"$in": revoked}, "status": MandateStatus.ACTIVE},
                 {"$set": {"status": MandateStatus.REVOKED, "revoked_by": by,
                           "revoked_at_seq": root["seq"], "revoked_at": root["clock"]}}, session=session)
-            self.db.effects.update_many(
-                {"root_id": root["_id"], "mandate_id": {"$in": revoked}, "state": EffectState.ADMITTED},
-                {"$set": {"state": EffectState.CANCELLED, "finished_at": root["clock"]}}, session=session)
             covered = list(self.db.effects.find(
                 {"root_id": root["_id"], "mandate_id": {"$in": revoked},
                  "admitted_seq": {"$lt": root["seq"]}}, session=session).sort("admitted_seq", 1))

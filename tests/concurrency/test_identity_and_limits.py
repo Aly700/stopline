@@ -18,7 +18,10 @@ def test_same_action_id_commits_once(concurrency_gate, monkeypatch, changed):
     assert pause.values[0] is None and pause.calls >= 2
     assert winner.allowed
     assert gate.db.effects.count_documents({"_id": first.action_id}) == 1
-    assert len(audit(gate, first, "allow")) == 1
+    allows = audit(gate, first, "allow")
+    assert len(allows) == (1 if changed else 2)
+    assert sum(not row["detail"].get("replayed", False) for row in allows) == 1
+    assert sum(row["detail"].get("replayed", False) for row in allows) == (0 if changed else 1)
     assert gate.db.mandates.find_one({"_id": mandate["_id"]})["seq"] >= winner.seq
     if changed:
         assert not loser.allowed and loser.reason == Reason.SAME_ID_DIFFERENT_ARGS

@@ -27,11 +27,21 @@ AUDIT_VALIDATOR = {"$jsonSchema": {
         "mandate_id": {"bsonType": ["string", "null"]},
         "root_id": {"bsonType": ["string", "null"]},
         "action_id": {"bsonType": ["string", "null"]},
-        "policy_version": {"bsonType": ["int", "long"]},
-        "policy_hash": {"bsonType": "string"},
+        "policy_version": {"bsonType": ["int", "long"], "minimum": 1},
+        "policy_hash": {"bsonType": "string", "pattern": "^[0-9a-f]{64}$"},
         "reason": {"enum": [str(item) for item in Reason]},
         "seq": {"bsonType": ["int", "long", "null"]},
         "at": {"bsonType": "date"},
         "detail": {"bsonType": "object"},
     },
 }}
+
+_ID = {"bsonType": "string", "minLength": 1}
+_OK = {"enum": [str(Reason.OK)]}
+_DONE = {"reason": _OK, "mandate_id": _ID, "root_id": _ID, "run_id": _ID, "principal": _ID,
+         "seq": {"bsonType": ["int", "long"], "minimum": 0}}
+AUDIT_VALIDATOR["$jsonSchema"]["oneOf"] = [
+    {"properties": {"kind": {"enum": ["allow", "claim", "outcome", "undo"]}, "action_id": _ID, **_DONE}},
+    {"properties": {"kind": {"enum": ["hand_down", "stop"]}, "action_id": {"bsonType": "null"}, **_DONE}},
+    {"properties": {"kind": {"enum": ["deny"]}, "reason": {"not": _OK}}},
+]
