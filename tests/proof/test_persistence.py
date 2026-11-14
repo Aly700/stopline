@@ -30,10 +30,10 @@ def test_cli_only_publishes_proof_results_and_drops_scratch(tmp_path, monkeypatc
     monkeypatch.setattr(connection, 'database', lambda name: publication)
     monkeypatch.setattr(connection, 'drop_test_database', lambda db: dropped.append(db))
     output = tmp_path / 'out.json'
-    assert main(['--out', str(output)]) == 0
+    assert main(['--backend', 'fake', '--out', str(output)]) == 0
     assert dropped == [scratch]
     assert set(publication.collections) == {'proof_results'}
-    assert len(summary(publication)) == 3
+    assert summary(publication) == []
     printed = capsys.readouterr().out
     for text in ('FAKE', 'paused_send', 'SKIPPED', 'FAILED: none', 'depth 2'):
         assert text in printed
@@ -46,7 +46,7 @@ def test_cli_drops_scratch_even_when_output_write_fails(tmp_path, monkeypatch, c
     monkeypatch.setattr(connection, 'test_database', lambda lane: scratch)
     monkeypatch.setattr(connection, 'database', lambda name: MemoryDatabase())
     monkeypatch.setattr(connection, 'drop_test_database', lambda db: dropped.append(db))
-    assert main(['--out', str(tmp_path)]) == 2
+    assert main(['--backend', 'fake', '--out', str(tmp_path)]) == 2
     assert dropped == [scratch]
     assert 'IsADirectoryError' in capsys.readouterr().err
 
@@ -60,7 +60,7 @@ def test_cli_cleanup_failure_is_a_failure(tmp_path, monkeypatch, capsys):
         raise RuntimeError('sensitive connection details')
 
     monkeypatch.setattr(connection, 'drop_test_database', cannot_drop)
-    assert main(['--out', str(tmp_path / 'out.json')]) == 2
+    assert main(['--backend', 'fake', '--out', str(tmp_path / 'out.json')]) == 2
     assert 'sensitive connection details' not in capsys.readouterr().err
 
 

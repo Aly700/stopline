@@ -85,7 +85,7 @@ class Runtime:
     sender: Sender
     backend: str
 
-    def expire(self):
+    def expire(self, mandate_id=None):
         if self.backend != 'fake':
             raise UnsupportedSchedule('real gate has no injected server clock; expiry hook needs integration')
         self.gate.clock_offset += 3601
@@ -123,12 +123,11 @@ SOURCES = {
 }
 
 
-def build_runtime(*, backend='fake', work_dir: Path, db=None, router_url='http://127.0.0.1:8766') -> Runtime:
-    """After merge, select --backend real. The three factories are all here.
+def build_runtime(*, backend='fake', work_dir: Path, db=None, router_url='http://127.0.0.1:8796', router_process=None) -> Runtime:
+    """Build explicit fixtures, or real components under an owned router lifecycle.
 
-    Real mode requires an already-running isolated local router and complete
-    target-owned state()['log'] journals with event='applied' or 'fenced'. Missing
-    capabilities are explicit skips, never silently replaced by fake results.
+    The CLI defaults to real execution; real.py owns setup, process restart and
+    target-journal extraction. No real request can silently fall back to fakes.
     """
     work_dir.mkdir(parents=True, exist_ok=True)
     if backend == 'fake':
@@ -142,15 +141,12 @@ def build_runtime(*, backend='fake', work_dir: Path, db=None, router_url='http:/
             raise ValueError('real backend requires a proof scratch database')
         router = urlparse(router_url)
         if (router.scheme != 'http' or router.hostname not in ('127.0.0.1', 'localhost', '::1')
-                or router.port != 8766 or router.username or router.password):
-            raise ValueError('real target timestamps require a loopback router on port 8766')
-        from stopline.gate import build_gate
-        from stopline.targets import build_sender, build_targets
-
-        gate = build_gate(db)
-        raw_targets = build_targets(cluster='mock', router_url=router_url)
-        targets = {key: ObservedTarget(target, db) for key, target in raw_targets.items()}
-        sender = build_sender(gate, targets)
+                or router.port != 8796 or router.username or router.password):
+            raise ValueError('real target timestamps require a loopback router on port 8796')
+        if router_process is None:
+            raise ValueError('real backend requires an owned router process; use run_suite')
+        from stopline.proof.real import real_runtime
+        return real_runtime(db, router_process)
     else:
         raise ValueError('backend must be fake or real')
     return Runtime(db, gate, targets, sender, backend)

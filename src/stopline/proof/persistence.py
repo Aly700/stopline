@@ -4,6 +4,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
+from bson import ObjectId
 
 COLLECTIONS = ('runs', 'effects', 'receipts', 'audit', 'mandates', 'proof_sends',
                'proof_timings', 'proof_observations', 'proof_target_logs')
@@ -23,10 +24,11 @@ def persist_and_reload(result, db):
             batches[f'proof_{name}'].extend(data[name])
         batches['proof_target_logs'].extend(dict(log, _id=uuid4().hex, run_id=run_id) for log in data['target_logs'])
     for name, records in batches.items():
-        if records:
+        already_in_atlas = result.get('producer') == 'real' and name in ('effects', 'receipts', 'audit', 'mandates')
+        if records and not already_in_atlas:
             db[name].insert_many(records)
     reload_evidence(result, db)
-    result['sources']['record_storage'] = 'persisted and reread from scratch database; fakes still generated the gate, sender and target records'
+    result['sources']['record_storage'] = 'persisted and reread from scratch database; component producer: ' + result.get('producer', 'fake')
 
 
 def reload_evidence(result, db):
@@ -51,6 +53,8 @@ def reload_evidence(result, db):
 def _json_default(value):
     if isinstance(value, datetime):
         return value.isoformat()
+    if isinstance(value, ObjectId):
+        return str(value)
     raise TypeError(f'not serializable: {type(value).__name__}')
 
 

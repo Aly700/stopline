@@ -9,7 +9,7 @@ from uuid import uuid4
 
 from stopline.contract import (
     Action, DEMO_PLAN, HoldPoint, OPERATOR, REPAIR_AGENT, Tool, WORKER_ONE, WORKER_TWO,
-    TargetTimeout, TargetUnreachable, action_id_for, system_of,
+    NotClaimed, TargetTimeout, TargetUnreachable, action_id_for, system_of,
 )
 from stopline.proof.backend import SOURCES, UnsupportedSchedule, build_runtime
 from stopline.proof.fakes import effect_for
@@ -36,7 +36,8 @@ class Driver:
             self.run['holds'] = [dict(principal=case.worker, step=case.step, point=str(case.point), released=False)]
         self.db['runs'].insert_one(self.run)
         if mode == 'stopline':
-            self.gate.setup()
+            if not getattr(runtime, 'setup_done', False):
+                self.gate.setup()
             self.gate.grant_root(run_id=run_id, grantor=OPERATOR, holder=OPERATOR,
                                  **self.scope(16), ttl_seconds=3600, mandate_id=self.root_id)
             self.gate.hand_down(parent_id=self.root_id, holder=REPAIR_AGENT,
@@ -83,10 +84,14 @@ class Driver:
             data[short] = list(self.db[f'proof_{short}'].find({'run_id': self.run_id}))
         logs = []
         for target in self.targets.values():
-            state = target.state()
-            if 'log' not in state:
-                raise UnsupportedSchedule(f'{target.name} does not expose a complete target-owned journal')
-            logs.extend(row for row in state['log'] if row['action_id'].startswith(self.run_id + '-'))
+            if self.runtime.backend == 'real':
+                entries = self.runtime.logs(target)
+            else:
+                state = target.state()
+                if 'log' not in state:
+                    raise UnsupportedSchedule(f'{target.name} does not expose a complete target-owned journal')
+                entries = state['log']
+            logs.extend(row for row in entries if row['action_id'].startswith(self.run_id + '-'))
         data['target_logs'] = logs
         return data
 
@@ -118,12 +123,19 @@ class Driver:
             self.reach_hold(worker, step, hold)
         started = time.perf_counter_ns()
         if self.mode == 'stopline':
-            allowed = self.gate.admit(action).allowed
+            admission = self.gate.admit(action)
+            allowed = admission.allowed
         elif self.mode == 'flag':
             allowed = not self.db['runs'].find_one({'_id': self.run_id})['stop_flag']
         else:
             allowed = True
         self._timing(worker, step, (time.perf_counter_ns() - started) / 1e6)
+        if self.mode == 'stopline':
+            self.db['proof_observations'].insert_one(dict(
+                run_id=self.run_id, event='admission_result', action_id=action.action_id,
+                attempts=admission.attempts, allowed=admission.allowed, reason=admission.reason,
+                effects=[], receipts=[], target_logs=[], sends=[],
+            ))
         if not allowed:
             return
         if self.mode != 'stopline':
@@ -183,21 +195,34 @@ class Driver:
                 self.stop()
             self.step(WORKER_ONE, 0, hold=HoldPoint.AFTER_CHECK if case.first == 'admit' else None)
         elif case.kind == 'hand_down':
-            if case.first == 'stop':
+            if self.mode != 'stopline':
+                # Baseline counterpart: start the child before/after the flag.
+                if case.first == 'stop':
+                    self.stop()
+                self.step(WORKER_TWO, 0, hold=HoldPoint.AFTER_CHECK if case.first == 'grant' else None)
+            else:
+                if case.first == 'stop':
+                    self.stop()
+                self.grant_worker(WORKER_TWO)
                 self.stop()
-            self.grant_worker(WORKER_TWO)
-            self.stop()
-            if self.db['mandates'].find_one({'_id': self.worker_ids[WORKER_TWO]}):
-                self.step(WORKER_TWO, 0)
+                if self.db['mandates'].find_one({'_id': self.worker_ids[WORKER_TWO]}):
+                    self.step(WORKER_TWO, 0)
         elif case.kind == 'expiry':
             self.step(WORKER_ONE, 0)
-            self.runtime.expire()
+            self.runtime.expire(self.repair_id if self.mode == 'stopline' else None)
             self.step(WORKER_ONE, 1)
         elif case.kind == 'retry':
-            self.runtime.force_retry(self.stop)
-            self.step(WORKER_ONE, 0)
+            if self.mode == 'stopline':
+                self.runtime.force_retry(self.stop)
+                self.step(WORKER_ONE, 0)
+            else:
+                # No transaction exists in a baseline; place stop after its read.
+                self.step(WORKER_ONE, 0, hold=HoldPoint.AFTER_CHECK)
         elif case.kind == 'paused_send':
-            self.step(WORKER_TWO, 0, dispatch=self.stop)
+            if self.runtime.backend == 'real':
+                self.runtime.paused_send(self)
+            else:
+                self.step(WORKER_TWO, 0, dispatch=self.stop)
         elif case.kind in ('lost_reply', 'router_restart'):
             self.targets['router'].cut()
             self.step(WORKER_TWO, 0)
@@ -217,6 +242,12 @@ class Driver:
             self.stop()
             self.targets['router'].redeliver(self.action(WORKER_TWO, 0).action_id)
         elif case.kind == 'receipt_closure':
+            if self.mode != 'stopline':
+                self.step(WORKER_TWO, 0, hold=HoldPoint.AFTER_CHECK)
+                self.run['status'] = 'done'
+                self._save_run()
+                self.observe('finished')
+                return self.capture()
             self.step(WORKER_TWO, 0, claim_only=True)
             self.stop()
             self.observe('before_reconcile')
@@ -224,7 +255,13 @@ class Driver:
             self.reconcile(action_id)
             self.observe('after_fence')
             # Release the previously claimed request after reconciliation fenced it.
-            self.sender.send(action_id)
+            try:
+                self.sender.send(action_id)
+            except NotClaimed:
+                # The real sender refuses terminal effects. Independently probe
+                # the target fence with the retained payload as a delayed packet.
+                self.observe('sender_refused_terminal_delivery')
+                self.targets['router'].send(self.action(WORKER_TWO, 0))
         self.stop()
         self.run['status'] = 'done'
         self._save_run()
@@ -249,7 +286,9 @@ def checks_for(case, mode, data):
         checks['receipt_closed'] = all(r['status'] == 'closed' for r in data['receipts'])
         if case.kind == 'retry':
             checks['retry_rechecked_authority'] = any(
-                a['kind'] == 'deny' and a['reason'] == 'revoked' and a['detail'].get('attempts') == 2 for a in data['audit'])
+                a['kind'] == 'deny' and a['reason'] == 'revoked' for a in data['audit']) and any(
+                o['event'] == 'admission_result' and o.get('attempts') == 2 and not o['allowed']
+                for o in data['observations'])
             checks['no_effect_from_aborted_attempt'] = not effects
         if case.kind == 'expiry':
             checks['expiry_refused'] = any(a['kind'] == 'deny' and a['reason'] == 'expired' for a in data['audit'])
@@ -314,16 +353,23 @@ def finalize(result):
     )
     result['complete'] = (result['catalogue_complete'] and required_passed
                           and not result['failed'] and bool(result['flag_counterexamples']))
+    if result.get('producer') == 'real':
+        from stopline.proof import summary_numbers
+        result['stopline_late_start_schedules'] = summary_numbers(result)['counterexamples']
+        result['late_start_free'] = not result['stopline_late_start_schedules']
     return result
 
 
-def run_suite(*, work_dir=None, backend='fake', scratch_db=None, router_url='http://127.0.0.1:8766'):
+def run_suite(*, work_dir=None, backend='fake', scratch_db=None, router_url='http://127.0.0.1:8796'):
     if work_dir is None:
         with TemporaryDirectory(prefix='stopline-proof-') as directory:
             return run_suite(work_dir=Path(directory), backend=backend, scratch_db=scratch_db, router_url=router_url)
     work_dir = Path(work_dir)
+    if backend == 'real':
+        from stopline.proof.real import run_real_suite
+        return run_real_suite(work_dir=work_dir, scratch_db=scratch_db, router_url=router_url)
     started = time.monotonic()
-    result = dict(_id=uuid4().hex, created_at=utcnow(), backend=backend, schema_version=1,
+    result = dict(_id=uuid4().hex, created_at=utcnow(), backend=backend, producer=backend, schema_version=2,
                   bounds=BOUNDS, definitions=DEFINITIONS, sources=dict(SOURCES) if backend == 'fake' else {
                       'gate': 'build_gate(scratch_db)', 'sender': 'build_sender',
                       'cluster': 'build_targets(cluster=mock)', 'router': 'existing local router',

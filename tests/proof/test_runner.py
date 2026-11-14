@@ -34,16 +34,12 @@ def test_fault_checks_have_recorded_evidence(tmp_path):
     assert rows['receipt_closure']['checks']['closed_after_reconcile']
 
 
-def test_summary_reads_latest_result_and_always_returns_three_lines(tmp_path):
+def test_summary_ignores_fake_results(tmp_path):
     db = MemoryDatabase()
-    assert len(summary(db)) == 3
+    assert summary(db) == []
     result = run_suite(work_dir=tmp_path)
     db['proof_results'].insert_one(result)
-    lines = summary(db)
-    assert len(lines) == 3
-    assert 'FAKE' in ' '.join(lines)
-    assert 'in-flight' in ' '.join(lines)
-    assert 'flag' in ' '.join(lines)
+    assert summary(db) == []
 
 
 def test_missing_required_schedule_is_incomplete(tmp_path):
@@ -63,4 +59,4 @@ def test_skipped_required_schedule_does_not_count_as_passed_measurement(tmp_path
     assert result['totals']['stopline']['sent_before_stop_landed_after'] == 0
     db = MemoryDatabase()
     db['proof_results'].insert_one(result)
-    assert 'incomplete' in ' '.join(summary(db)).lower()
+    assert summary(db) == []

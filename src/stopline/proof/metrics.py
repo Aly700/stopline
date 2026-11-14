@@ -23,7 +23,7 @@ DEFINITIONS = {
     'missing_from_receipt': 'Distinct (receipt, effect) pairs in the stopped chain with admission before stop_seq absent from covered, in any stored snapshot. Missing receipt counts every pre-stop effect in that chain.',
     'duplicate_effects': 'Sum of max(0, actual applied target log entries per (system, action_id) - 1). Replayed responses are not apply entries.',
     'closed_without_evidence': 'Distinct receipts observed closed in any stored snapshot with an omission, missing or nonterminal effect, or no matching target evidence at that time. Cancelled requires no claim, dispatch or target application.',
-    'added_delay_ms': 'Per matched action attempt: max(0, authority check + claim wall time minus fixed-mode check time). Median and maximum of pooled samples, excluding holds, target I/O, setup, stop and result persistence. Fakes are not an Atlas latency benchmark.',
+    'added_delay_ms': 'Per matched action attempt: max(0, authority check + claim wall time minus fixed-mode check time). Median and maximum of pooled samples, excluding holds, target I/O, setup, stop and result persistence. Retry schedule excluded because its admission call includes the interleaved stop. Real samples reflect eight concurrent experiments; fake samples are not Atlas latency.',
     'stop_marker': 'runs.stop_at_local recorded after stop returns (or flag is set), on the same host as targets. Authority order uses Mongo sequence, never client timestamps.',
 }
 
@@ -130,6 +130,8 @@ def aggregate(rows: list[dict]) -> dict:
             counts[key] = sum(values) if values else None
         samples = []
         for row in selected:
+            if row['name'] == 'retry':
+                continue
             control = controls.get(row['name'])
             if control is None:
                 continue

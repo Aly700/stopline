@@ -22,7 +22,7 @@ def test_atlas_evidence_round_trip_and_cleanup(tmp_path):
         finalize(result)
         assert [(r['mode'], r['name'], r.get('counts')) for r in result['rows']] == original
         scratch['proof_results'].insert_one(result)
-        assert len(summary(scratch)) == 3
+        assert summary(scratch) == []
         assert result['complete']
     finally:
         connection.drop_test_database(scratch)

@@ -1,4 +1,12 @@
-"""python -m stopline.proof --out <file.json> [--offline] [--backend real]."""
+"""Real by default: STOPLINE_ROUTER_PORT=8796 python -m stopline.proof --out FILE.
+
+Use --backend fake --offline for local fixtures; these never appear on M.
+The only demo write is proof_results. Scratch data and the owned router process
+are cleaned up. A real late-start counterexample is stored and returns exit 1.
+"""
+
+import os
+os.environ['STOPLINE_ROUTER_PORT'] = '8796'
 
 import argparse
 import sys
@@ -6,7 +14,7 @@ import time
 from pathlib import Path
 
 from stopline import db as connection
-from stopline.proof import summary
+from stopline.proof import summary, summary_numbers
 from stopline.proof.metrics import COUNT_KEYS
 from stopline.proof.persistence import persist_and_reload, write_json
 from stopline.proof.runner import finalize, run_suite
@@ -36,7 +44,9 @@ def print_result(result):
     print('Flag counterexamples: ' + (', '.join(result['flag_counterexamples']) or 'none'))
     print(f"Elapsed: {result['elapsed_seconds']:.3f}s; one repetition of each applicable schedule.")
     print('Dispatch is measured separately from claim. In-flight arrivals are included above.')
-    print('Added delay excludes holds and target I/O; measured fake timings are not Atlas gate latency.')
+    print('Added delay excludes holds and target I/O; producer: ' + result['producer'])
+    if result['producer'] == 'real':
+        print('StopLine late-start schedules: ' + (', '.join(summary_numbers(result)['counterexamples']) or 'none'))
     cache = MemoryDatabase()
     cache['proof_results'].insert_one(result)
     print('\n'.join(summary(cache)))
@@ -46,9 +56,9 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description='Run finite schedules and publish evidence-derived counts.')
     parser.add_argument('--out', type=Path, required=True, help='JSON evidence and results file')
     parser.add_argument('--database', default=connection.DB_NAME, help='only proof_results is written here')
-    parser.add_argument('--backend', choices=('fake', 'real'), default='fake')
+    parser.add_argument('--backend', choices=('fake', 'real'), default='real')
     parser.add_argument('--offline', action='store_true', help='fakes plus JSON only; no Atlas reads or writes')
-    parser.add_argument('--router-url', default='http://127.0.0.1:8766')
+    parser.add_argument('--router-url', default='http://127.0.0.1:8796')
     args = parser.parse_args(argv)
     if args.offline and args.backend != 'fake':
         parser.error('--offline requires --backend fake')
@@ -60,12 +70,7 @@ def main(argv=None):
             scratch = connection.test_database('proof')
         result = run_suite(backend=args.backend, scratch_db=scratch, router_url=args.router_url)
         if scratch is not None:
-            if args.backend == 'fake':
-                persist_and_reload(result, scratch)
-            else:
-                # The real gate already wrote its records. Target journals must be
-                # collected by an integrated target logger before this mode is complete.
-                result['sources']['record_storage'] = 'real scratch database; target snapshots captured locally'
+            persist_and_reload(result, scratch)
             finalize(result)
             connection.drop_test_database(scratch)
             scratch = None
@@ -78,7 +83,8 @@ def main(argv=None):
         print_result(result)
         whole_seconds = time.monotonic() - started
         print(f'Total command wall time including publication: {whole_seconds:.3f}s')
-        exit_code = 0 if result['complete'] and whole_seconds < 360 else 1
+        no_real_late_starts = result['producer'] != 'real' or not summary_numbers(result)['counterexamples']
+        exit_code = 0 if result['complete'] and whole_seconds < 360 and no_real_late_starts else 1
     except Exception as error:
         print(f'proof could not complete ({type(error).__name__}); no connection details logged', file=sys.stderr)
         exit_code = 2
