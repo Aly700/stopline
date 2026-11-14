@@ -56,6 +56,7 @@ function actionButton(row, receipt = false) {
     if (row.kind === 'action' && row.outcome === 'blocked') notes.push(row.refusal ? `Cancelled before it was sent · ${refusalText(row.refusal)}` : 'Cancelled before it was sent');
     if (row.held) notes.push('held by test schedule');
   }
+  if (row.outcome === 'STOPPED IN TIME') notes.push('claimed, then fenced at the target before it arrived');
   if (row.reconciled) notes.push('asked the router by action id · applied');
   if (notes.length) node.append(make('span', notes.join(' · '), 'row-detail'));
   node.addEventListener('click', () => showChain(row.action_id));
@@ -78,6 +79,7 @@ function render(state) {
     ? (repair ? `Permission ${repair.status === 'revoked' ? 'stopped' : 'granted'}: Operator → Repair agent → ${workers.length} workers` : 'Permission pending')
     : 'A repair agent. Two workers. One stop.';
   $('workers').replaceChildren(...state.workers.map(worker => make('span', `${person(worker.principal)}: ${{killed:'crashed', held:'held by test schedule', stopped:'stopped', done:'completed', running:'running'}[worker.status] || worker.status}`, `worker-${worker.status}`)));
+  $('readiness').textContent = state.ready_key ? `Ready for ${state.ready_key}` : '';
   const rows = [];
   let stopped = false;
   // The receipt has the full accounting; keep the live trace readable beside it.
@@ -190,7 +192,7 @@ async function pollTargets() {
 function status(message, isPending = false) { $('key-status').textContent = `${latestKey ? latestKey + ' · ' : ''}${message}`; $('key-status').classList.toggle('pending', isPending); }
 function showValidation(result) {
   const detail = result.detail || {};
-  const refusal = detail.refusal || detail.error || detail.message || (Object.keys(detail).length ? detail : result.message);
+  const refusal = detail.refusal || detail.error || detail.message || result.message;
   $('validation-text').textContent = typeof refusal === 'string' ? refusal : JSON.stringify(refusal, null, 2);
   $('validation-panel').hidden = false;
   clearTimeout(validationTimer);
@@ -229,6 +231,7 @@ async function keypress(key) {
     const result = await response.json();
     if (key === 'M') {
       $('numbers-lines').replaceChildren(...(result.lines?.length ? result.lines : [result.message]).map(line => make('p', line)));
+      $('numbers-note').hidden = !result.lines?.length;
       if (!$('numbers-dialog').open) $('numbers-dialog').showModal();
     }
     pending = result.pending ? {...result, key, beforeRun} : null;

@@ -54,6 +54,8 @@ def action_row(effect, run, permissions, held):
         and (target_time is not None or not evidence) and started > boundary)
     if row['ran_after_stop']:
         row['outcome'] = 'RAN AFTER STOP'
+    if state == 'rejected' and (evidence or {}).get('fenced') is True:
+        row['outcome'] = 'STOPPED IN TIME'
     row['reconciled'] = False
     return row
 
@@ -67,6 +69,40 @@ def refusal_row(entry, run, permissions, held):
                 state=None, evidence=None, undo=None, policy_version=entry.get('policy_version'))
 
 
+def ready_key(run, tasks, receipt, effects):
+    workers = {task['principal']: task for task in tasks}
+
+    def held(principal, point=None):
+        task = workers.get(principal, {})
+        at = task.get('held_at') or {}
+        return task.get('status') == 'held' and bool(at) and (point is None or at.get('point') == point) and any(
+            hold['principal'] == principal and hold['step'] == at.get('step')
+            and hold['point'] == at.get('point') and not hold['released'] for hold in run.get('holds', []))
+
+    if run['mode'] in ('flag', 'fixed'):
+        return 'S' if not run.get('stop_flag') and held('agent:worker-1') else None
+    worker_two = workers.get('agent:worker-2', {})
+    if receipt:
+        if not run.get('stop_flag'):
+            return None  # The stop is still settling claimed work.
+        if worker_two.get('status') == 'killed':
+            return 'W'
+        if worker_two.get('status') not in ('running', 'stopped', 'done'):
+            return None
+        if receipt['status'] == 'open':
+            return 'R'
+        if any(effect['state'] == 'applied' and not effect.get('reverses')
+               and effect.get('undo') not in ('undone', 'no_undo') for effect in effects):
+            return 'U'
+        return None
+    if not run.get('stop_flag'):
+        if worker_two.get('status') == 'killed':
+            return 'S'
+        if held('agent:worker-2', 'after_claim'):
+            return 'K'
+    return None
+
+
 def read_state(db):
     # A single Atlas round trip, including the current run, not one read per row.
     pipeline = [{'$sort': {'created_at': -1, '_id': -1}}, {'$limit': 1}]
@@ -74,7 +110,7 @@ def read_state(db):
                  for name in COLLECTIONS]
     bundle = next(iter(db['runs'].aggregate(pipeline)), None)
     if bundle is None:
-        return dict(run=None, rows=[], omitted_rows=0, stop=None, receipt=None, workers=[], permissions=[])
+        return dict(ready_key=None, run=None, rows=[], omitted_rows=0, stop=None, receipt=None, workers=[], permissions=[])
     records = {name: bundle.pop(name, []) for name in COLLECTIONS}
     run = bundle
     permissions = {row['_id']: row for row in records['mandates']}
@@ -142,7 +178,7 @@ def read_state(db):
                 row['action_id'] in receipt['covered'] and effect.get('state') == 'applied'
                 and evidence.get('system') == 'router' and evidence.get('action_id') == row['action_id']
                 and epoch(effect.get('finished_at')) > epoch(receipt['stopped_at']))
-    return serial(dict(run=run, rows=rows[-8:], omitted_rows=max(0, len(rows) - 8), stop=stop,
+    return serial(dict(ready_key=ready_key(run, records['tasks'], receipt, effects.values()), run=run, rows=rows[-8:], omitted_rows=max(0, len(rows) - 8), stop=stop,
                        receipt=receipt_view, workers=records['tasks'], permissions=list(permissions.values())))
 
 
